@@ -2,7 +2,7 @@
 
 import pytest
 
-from boostsec.registry_test_action.module import greet
+from scan_test_action.module import greet
 
 
 @pytest.mark.parametrize(

@@ -7,22 +7,19 @@ packages = [{ include = "scan_test_action" }]
 include = ["scan_test_action/py.typed"]
 
 [tool.poetry.dependencies]
-## Automatically generated dependencies. DO NOT edit between these lines. ##
 python = "^3.12"
-## Automatically generated dependencies. DO NOT edit between these lines. ##
+pydantic = "^2"
 
 [tool.poetry.extras]
 testing = [
 ]
 
 [tool.poetry.group.dev.dependencies]
-## Automatically generated dependencies. DO NOT edit between these lines. ##
 coverage = "^7.3.3"
 mypy = "^1.11.0"
 pytest = "^7.4.3"
 pytest-cov = "^4.1.0"
 ruff = "0.*"
-## Automatically generated dependencies. DO NOT edit between these lines. ##
 
 
 [tool.coverage.report]
