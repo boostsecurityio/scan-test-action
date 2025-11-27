@@ -62,3 +62,31 @@ tests:
 ### Matrix Expansion
 
 Each test is expanded into matrix entries for CI execution. A test with multiple `scan_paths` creates one matrix entry per path, enabling parallel execution.
+
+## Provider Architecture
+
+The action supports multiple CI/CD providers through a common interface. Each provider handles dispatching tests and polling for results.
+
+### Provider Interface
+
+Providers implement `PipelineProvider[T]`, a generic interface where `T` is the dispatch state type:
+
+```python
+@dataclass(frozen=True, kw_only=True)
+class MyProvider(PipelineProvider[str]):
+    # Configuration fields...
+
+    async def dispatch_scanner_tests(...) -> str:
+        # Dispatch tests, return state for polling
+        return run_id
+
+    async def poll_status(dispatch_state: str) -> Sequence[TestResult] | None:
+        # Return results when complete, None when still running
+        return results if complete else None
+```
+
+The generic type allows providers to pass any state between dispatch and poll - from a simple run ID to complex objects with multiple identifiers.
+
+### Wait Logic
+
+The base class provides `wait_for_completion()` which handles polling with timeout. Providers only implement the dispatch and poll methods.

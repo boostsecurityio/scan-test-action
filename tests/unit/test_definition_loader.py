@@ -10,8 +10,6 @@ from scan_test_action.definition_loader import load_test_definition
 class TestLoadTestDefinition:
     """Tests for load_test_definition function."""
 
-    __test__ = True  # Explicitly mark as test class despite "Test" prefix
-
     async def test_loads_valid_yaml(self, tmp_path: Path) -> None:
         """Loads and parses valid tests.yaml file."""
         scanner_dir = tmp_path / "scanners" / "org" / "scanner"

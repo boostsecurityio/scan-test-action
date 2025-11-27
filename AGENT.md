@@ -30,6 +30,13 @@
 - **Avoid undefined concepts**: Don't add fields for features that aren't yet defined
 - **Test file naming**: Test files match source files (e.g., `test_definition.py` for `definition.py`)
 
+### Providers
+
+- **Frozen dataclass base**: `PipelineProvider` is a `@dataclass(frozen=True, kw_only=True)` for immutability
+- **Generic state passing**: `PipelineProvider[T]` where `T` is the dispatch state type, avoiding internal mutable state
+- **Concrete wait logic**: Base class implements `wait_for_completion()`, providers only implement dispatch/poll
+- **Poll returns None when not ready**: `poll_status()` returns `Sequence[TestResult] | None` - results when complete, None when still running (avoids redundant boolean)
+
 ### Git Conventions
 
 - **Branch naming**: `{TICKET}-{N}-{description}` for stacked PRs where N is the stack number
