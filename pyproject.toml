@@ -20,6 +20,7 @@ mypy = "^1.11.0"
 pytest = "^7.4.3"
 pytest-cov = "^4.1.0"
 ruff = "0.*"
+pytest-asyncio = "^0.23"
 
 
 [tool.coverage.report]
@@ -105,6 +106,8 @@ classmethod-decorators = [
     "S101",  # Use of `assert` detected
     "S105",  # Possible hardcoded password
     "S311",  # Standard pseudo-random generators are not suitable for cryptographic purposes
+    "S603",  # subprocess call: check for untrusted input
+    "S607",  # Starting a process with a partial executable path
 ]
 
 [build-system]
