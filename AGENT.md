@@ -17,8 +17,18 @@
 ### Project Structure
 
 - Source code: `scan_test_action/`
+- Models: `scan_test_action/models/`
+- Unit tests: `tests/unit/`
 - Integration tests: `tests/integration/`
 - Test fixtures: `tests/integration/conftest.py`
+
+### Models
+
+- **No code in `__init__.py`**: Keep init files minimal, put implementations in dedicated modules
+- **Use `Model` base class**: All models inherit from `scan_test_action.models.base.Model` (frozen by default)
+- **Immutable collections**: Use `Sequence[T]` for lists, `Mapping[K, V]` for dicts in model fields
+- **Avoid undefined concepts**: Don't add fields for features that aren't yet defined
+- **Test file naming**: Test files match source files (e.g., `test_definition.py` for `definition.py`)
 
 ### Git Conventions
 
