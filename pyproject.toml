@@ -9,6 +9,7 @@ include = ["scan_test_action/py.typed"]
 [tool.poetry.dependencies]
 python = "^3.12"
 pydantic = "^2"
+pyyaml = "^6.0"
 
 [tool.poetry.extras]
 testing = [
@@ -21,6 +22,7 @@ pytest = "^7.4.3"
 pytest-cov = "^4.1.0"
 ruff = "0.*"
 pytest-asyncio = "^0.23"
+types-pyyaml = "^6.0.12.20250915"
 
 
 [tool.coverage.report]
