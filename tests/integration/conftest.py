@@ -1,10 +1,12 @@
 """Fixtures for integration tests."""
 
 import subprocess
+from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Protocol
 
 import pytest
+from aioresponses import aioresponses as aioresponses_cls
 
 
 class CommitFn(Protocol):
@@ -87,3 +89,10 @@ def create_scanner(git_repo: Path) -> CreateScannerFn:
         return scanner_dir
 
     return _create
+
+
+@pytest.fixture
+async def aioresponses() -> AsyncGenerator[aioresponses_cls, None]:
+    """Provide aioresponses mock for HTTP calls."""
+    with aioresponses_cls() as mocker:
+        yield mocker

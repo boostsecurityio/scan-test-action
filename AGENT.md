@@ -36,6 +36,16 @@
 - **Generic state passing**: `PipelineProvider[T]` where `T` is the dispatch state type, avoiding internal mutable state
 - **Concrete wait logic**: Base class implements `wait_for_completion()`, providers only implement dispatch/poll
 - **Poll returns None when not ready**: `poll_status()` returns `Sequence[TestResult] | None` - results when complete, None when still running (avoids redundant boolean)
+- **Module per provider**: Each provider lives in its own module (e.g., `providers/github_actions/`) with config, models, and provider
+- **Single session lifecycle**: Use `@classmethod` + `@asynccontextmanager` named `from_config` to manage aiohttp session
+- **Pydantic for API responses**: Parse third-party API responses with Pydantic models containing only consumed fields
+- **Dispatch ID for matching**: Generate UUID on dispatch, match in workflow display_title for deterministic run finding
+
+### Provider Testing
+
+- **Integration tests with aioresponses**: Mock HTTP calls using `aioresponses` fixture from `tests/integration/conftest.py`
+- **Provider fixture**: Create provider via `from_config` async context manager in fixture
+- **Configurable base URL**: Include `api_base_url` in config with default, override in tests for mocking
 
 ### Git Conventions
 

@@ -90,3 +90,45 @@ The generic type allows providers to pass any state between dispatch and poll - 
 ### Wait Logic
 
 The base class provides `wait_for_completion()` which handles polling with timeout. Providers only implement the dispatch and poll methods.
+
+## GitHub Actions Provider
+
+The `GitHubActionsProvider` dispatches tests to a GitHub Actions workflow and polls for completion.
+
+### Configuration
+
+When calling this action from a GitHub workflow, the provider configuration is passed as a JSON object:
+
+```yaml
+- uses: boostsecurityio/scanner-registry-testing/test-action@main
+  with:
+    provider: github-actions
+    provider-config: |
+      {
+        "token": "${{ secrets.TEST_RUNNER_TOKEN }}",
+        "owner": "boostsecurityio",
+        "repo": "test-runner-github",
+        "workflow_id": "scanner-test.yml",
+        "ref": "main"
+      }
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `token` | Yes | GitHub token with workflow permissions |
+| `owner` | Yes | Repository owner |
+| `repo` | Yes | Repository name |
+| `workflow_id` | Yes | Workflow file name or ID |
+| `ref` | No | Branch to run workflow on (default: "main") |
+
+### Dispatch ID for Deterministic Matching
+
+The provider generates a unique dispatch ID (UUID) for each workflow dispatch. This ID is passed as a workflow input and should be displayed in the workflow's `run-name`. The provider uses this ID to reliably find the correct workflow run among concurrent executions.
+
+**Test runner workflow requirements:**
+- Accept `dispatch_id` as a workflow input
+- Include the dispatch ID in `run-name` (e.g., `run-name: "[${{ inputs.dispatch_id }}] Scanner Tests"`)
+
+### Session Management
+
+The provider uses a single `aiohttp.ClientSession` for its lifetime, configured with the base URL and authorization headers. Use the `from_config` async context manager to ensure proper cleanup.
