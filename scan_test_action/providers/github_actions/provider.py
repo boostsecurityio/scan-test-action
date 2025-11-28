@@ -34,6 +34,7 @@ CONCLUSION_TO_STATUS: Mapping[
     "neutral": "success",
     "skipped": "error",
     "stale": "error",
+    None: "error",
 }
 
 
@@ -127,7 +128,7 @@ class GitHubActionsProvider(PipelineProvider[DispatchState]):
             return None
 
         duration = (run.updated_at - run.created_at).total_seconds()
-        status = CONCLUSION_TO_STATUS.get(run.conclusion, "error")
+        status = CONCLUSION_TO_STATUS[run.conclusion]
 
         return [
             TestResult(
