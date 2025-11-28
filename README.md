@@ -132,3 +132,42 @@ The provider generates a unique dispatch ID (UUID) for each workflow dispatch. T
 ### Session Management
 
 The provider uses a single `aiohttp.ClientSession` for its lifetime, configured with the base URL and authorization headers. Use the `from_config` async context manager to ensure proper cleanup.
+
+## GitLab CI Provider
+
+The `GitLabCIProvider` dispatches tests to a GitLab CI pipeline and polls for completion.
+
+### Configuration
+
+```yaml
+- uses: boostsecurityio/scanner-registry-testing/test-action@main
+  with:
+    provider: gitlab-ci
+    provider-config: |
+      {
+        "token": "${{ secrets.GITLAB_TOKEN }}",
+        "project_id": "boostsecurityio/test-runner-gitlab",
+        "ref": "main"
+      }
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `token` | Yes | GitLab Personal Access Token with API permissions |
+| `project_id` | Yes | Project ID (numeric) or path (e.g., "org/project") |
+| `ref` | No | Branch to run pipeline on (default: "main") |
+
+### Pipeline Variables
+
+The provider passes test configuration as pipeline variables:
+- `SCANNER_ID`: Scanner being tested (e.g., "boostsecurityio/trivy-fs")
+- `REGISTRY_REF`: Git commit SHA of the registry
+- `REGISTRY_REPO`: Registry repository in org/repo format
+- `MATRIX_TESTS`: JSON array of test matrix entries
+
+### Project ID Handling
+
+The `project_id` can be either:
+- A numeric ID (e.g., `"12345"`)
+- A URL-encoded path (e.g., `"boostsecurityio%2Ftest-runner"`)
+- An unencoded path (e.g., `"boostsecurityio/test-runner"`) - the provider will URL-encode it automatically
