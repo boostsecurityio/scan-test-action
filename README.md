@@ -171,3 +171,41 @@ The `project_id` can be either:
 - A numeric ID (e.g., `"12345"`)
 - A URL-encoded path (e.g., `"boostsecurityio%2Ftest-runner"`)
 - An unencoded path (e.g., `"boostsecurityio/test-runner"`) - the provider will URL-encode it automatically
+
+## Azure DevOps Provider
+
+The `AzureDevOpsProvider` dispatches tests to an Azure DevOps pipeline and polls for completion.
+
+### Configuration
+
+```yaml
+- uses: boostsecurityio/scanner-registry-testing/test-action@main
+  with:
+    provider: azure-devops
+    provider-config: |
+      {
+        "token": "${{ secrets.AZURE_PAT }}",
+        "organization": "my-org",
+        "project": "my-project",
+        "pipeline_id": 42
+      }
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `token` | Yes | Azure DevOps Personal Access Token with Build permissions |
+| `organization` | Yes | Azure DevOps organization name |
+| `project` | Yes | Azure DevOps project name |
+| `pipeline_id` | Yes | Pipeline definition ID (numeric) |
+
+### Template Parameters
+
+The provider passes test configuration as pipeline template parameters:
+- `SCANNER_ID`: Scanner being tested (e.g., "boostsecurityio/trivy-fs")
+- `REGISTRY_REF`: Git commit SHA of the registry
+- `REGISTRY_REPO`: Registry repository in org/repo format
+- `MATRIX_TESTS`: JSON array of test matrix entries
+
+### Authentication
+
+Azure DevOps uses Basic authentication with an empty username and the Personal Access Token as the password. The token is automatically base64-encoded by the provider.
