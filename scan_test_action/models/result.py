@@ -6,13 +6,13 @@ from typing import Literal
 
 @dataclass(frozen=True, kw_only=True)
 class TestResult:
-    """Result of a single test execution."""
+    """Result of a single test execution.
+
+    Contains only execution outcome - the caller knows scanner/test/path context.
+    """
 
     __test__ = False
 
-    scanner_id: str
-    test_name: str
-    scan_path: str
     status: Literal["success", "failure", "timeout", "error"]
     duration: float
     message: str | None = None
