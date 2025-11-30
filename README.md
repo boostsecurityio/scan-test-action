@@ -6,6 +6,52 @@ A GitHub Action for running automated tests when scanners are modified in the sc
 
 This action detects which scanners have been modified in a pull request and runs their associated tests across CI/CD providers. It enables scanner authors to validate their changes before merging.
 
+## Test Orchestration Flow
+
+The `TestOrchestrator` coordinates test execution on a single CI/CD provider. It receives pre-loaded test definitions and orchestrates their execution in parallel.
+
+```
+┌──────────────────┐     ┌──────────────────┐
+│ Test Definitions │     │ Provider         │
+│ (pre-loaded)     │────▶│ Dispatch         │
+└──────────────────┘     └────────┬─────────┘
+                                  │
+      ┌──────────────────┐        │
+      │ Results          │◀───────┘
+      │ Aggregation      │
+      └──────────────────┘
+```
+
+### Usage
+
+```python
+orchestrator = TestOrchestrator(provider=my_provider)
+results = await orchestrator.run_tests(
+    test_definitions={"org/scanner": test_def},
+    registry_repo="org/registry",
+    registry_ref="abc123",
+)
+```
+
+### Execution Steps
+
+1. **Dispatch Tests**: Send all tests to the provider in parallel using `asyncio.gather()`
+2. **Wait for Completion**: Each dispatched test is polled until complete or timeout
+3. **Aggregate Results**: Collect results into `ScannerResult` objects
+
+### Result Structure
+
+Each scanner produces a `ScannerResult` containing:
+- `scanner_id`: The scanner identifier (e.g., "boostsecurityio/trivy-fs")
+- `results`: Sequence of `TestResult` objects from the provider
+
+### Error Handling
+
+- **Empty test definitions**: Returns empty list immediately
+- **Dispatch failure**: Returns error result with exception message
+- **Wait failure**: Returns error result with exception message
+- **Partial failure**: Successful results are preserved alongside error results
+
 ## Scanner Detection
 
 The action compares the PR branch against the base branch to identify modified scanners. A scanner is considered modified if any file under `scanners/<org>/<scanner>/` has changed.
