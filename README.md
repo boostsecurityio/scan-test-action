@@ -209,3 +209,55 @@ The provider passes test configuration as pipeline template parameters:
 ### Authentication
 
 Azure DevOps uses Basic authentication with an empty username and the Personal Access Token as the password. The token is automatically base64-encoded by the provider.
+
+## Bitbucket Pipelines Provider
+
+The `BitbucketProvider` dispatches tests to a Bitbucket Pipeline and polls for completion.
+
+### Configuration
+
+```yaml
+- uses: boostsecurityio/scanner-registry-testing/test-action@main
+  with:
+    provider: bitbucket
+    provider-config: |
+      {
+        "token": "${{ secrets.BITBUCKET_TOKEN }}",
+        "workspace": "my-workspace",
+        "repo_slug": "test-runner-bitbucket",
+        "branch": "main"
+      }
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `token` | Yes | Bitbucket OAuth access token |
+| `workspace` | Yes | Bitbucket workspace slug |
+| `repo_slug` | Yes | Repository slug |
+| `branch` | No | Branch to run pipeline on (default: "main") |
+
+### Pipeline Variables
+
+The provider passes test configuration as custom pipeline variables:
+- `SCANNER_ID`: Scanner being tested (e.g., "boostsecurityio/trivy-fs")
+- `REGISTRY_REF`: Git commit SHA of the registry
+- `REGISTRY_REPO`: Registry repository in org/repo format
+- `MATRIX_TESTS`: JSON array of test matrix entries
+
+### Custom Pipeline Selector
+
+The provider triggers a custom pipeline with the pattern `test-scanner`. Your `bitbucket-pipelines.yml` should define this custom pipeline:
+
+```yaml
+pipelines:
+  custom:
+    test-scanner:
+      - step:
+          name: Run Scanner Tests
+          script:
+            - echo "Running tests for $SCANNER_ID"
+```
+
+### Authentication
+
+Bitbucket uses OAuth Bearer token authentication. The token should have permissions to trigger pipelines on the target repository.
