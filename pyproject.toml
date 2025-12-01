@@ -15,6 +15,12 @@ pyyaml = "^6.0"
 testing = [
 ]
 
+[tool.poetry.plugins."scan_test_action.providers"]
+github-actions = "scan_test_action.providers.github_actions.manifest:github_actions_manifest"
+gitlab-ci = "scan_test_action.providers.gitlab_ci.manifest:gitlab_ci_manifest"
+azure-devops = "scan_test_action.providers.azure_devops.manifest:azure_devops_manifest"
+bitbucket = "scan_test_action.providers.bitbucket.manifest:bitbucket_manifest"
+
 [tool.poetry.group.dev.dependencies]
 coverage = "^7.3.3"
 mypy = "^1.11.0"

@@ -113,6 +113,31 @@ Each test is expanded into matrix entries for CI execution. A test with multiple
 
 The action supports multiple CI/CD providers through a common interface. Each provider handles dispatching tests and polling for results.
 
+### Plugin System
+
+Providers are registered as entry points in `pyproject.toml` and loaded dynamically by key:
+
+```python
+from scan_test_action.providers.loading import load_provider_manifest
+
+# Load provider by key (e.g., from config or CLI)
+manifest = load_provider_manifest("github-actions")
+
+# Create provider instance using the factory
+async with manifest.provider_factory(config) as provider:
+    results = await provider.dispatch_scanner_tests(...)
+```
+
+Each manifest contains:
+- `config_cls`: The provider's Pydantic configuration class
+- `provider_factory`: The async context manager factory (typically `Provider.from_config`)
+
+To add a new provider:
+1. Create the provider module under `scan_test_action/providers/<name>/`
+2. Add a `manifest.py` with the `ProviderManifest` instance
+3. Register it in `pyproject.toml` under `[tool.poetry.plugins."scan_test_action.providers"]`
+4. Run `poetry install` to update the entry points
+
 ### Provider Interface
 
 Providers implement `PipelineProvider[T]`, a generic interface where `T` is the dispatch state type:
