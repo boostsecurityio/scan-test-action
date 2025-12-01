@@ -6,6 +6,64 @@ A GitHub Action for running automated tests when scanners are modified in the sc
 
 This action detects which scanners have been modified in a pull request and runs their associated tests across CI/CD providers. It enables scanner authors to validate their changes before merging.
 
+## Usage
+
+### GitHub Action
+
+```yaml
+- uses: boostsecurityio/scanner-registry-testing/test-action@main
+  with:
+    provider: github-actions
+    provider-config: |
+      {
+        "token": "${{ secrets.TEST_RUNNER_TOKEN }}",
+        "owner": "boostsecurityio",
+        "repo": "test-runner-github",
+        "workflow_id": "scanner-test.yml"
+      }
+    registry-path: "."
+    registry-repo: "boostsecurityio/scanner-registry"
+    base-ref: "origin/main"
+```
+
+### Action Inputs
+
+| Input | Required | Description |
+|-------|----------|-------------|
+| `provider` | Yes | CI/CD provider key (e.g., `github-actions`, `gitlab-ci`, `azure-devops`, `bitbucket`) |
+| `provider-config` | Yes | JSON configuration for the provider (see provider sections below) |
+| `registry-path` | No | Path to registry root (default: `.`) |
+| `registry-repo` | No | Registry repository in org/repo format (default: extracted from git remote) |
+| `base-ref` | No | Base git reference for diff (default: `origin/main`) |
+
+### Action Outputs
+
+| Output | Description |
+|--------|-------------|
+| `results` | JSON object with test results including `status`, `total`, `passed`, `failed`, and `scanners` array |
+
+### CLI
+
+The action can also be run directly via CLI:
+
+```bash
+poetry run python -m scan_test_action.cli \
+  --provider github-actions \
+  --provider-config '{"token": "...", "owner": "...", "repo": "...", "workflow_id": "..."}' \
+  --registry-path . \
+  --registry-repo org/scanner-registry \
+  --base-ref origin/main
+```
+
+## Development
+
+### Prerequisites
+
+- Python 3.12+
+- Poetry
+- Docker (for module tests)
+- [act](https://nektosact.com/installation/index.html) (for module tests)
+
 ## Test Orchestration Flow
 
 The `TestOrchestrator` coordinates test execution on a single CI/CD provider. It receives pre-loaded test definitions and orchestrates their execution in parallel.

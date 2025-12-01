@@ -175,6 +175,39 @@ class TestDispatchScannerTests:
         assert state1.dispatch_time.tzinfo == timezone.utc
         assert state2.dispatch_time.tzinfo == timezone.utc
 
+    async def test_uses_static_dispatch_id_when_configured(
+        self,
+        aioresponses: aioresponses_cls,
+    ) -> None:
+        """Uses static dispatch ID when mode is static."""
+        static_config = GitHubActionsConfig(
+            token=SecretStr("test-token"),
+            owner="test-owner",
+            repo="test-repo",
+            workflow_id="test.yml",
+            api_base_url=API_BASE_URL,
+            dispatch_id_mode="static",
+        )
+        dispatch_url = (
+            f"{API_BASE_URL}/repos/test-owner/test-repo"
+            "/actions/workflows/test.yml/dispatches"
+        )
+        aioresponses.post(dispatch_url, status=204)
+
+        test_definition = TestDefinitionFactory.build(
+            tests=[TestFactory.build(source=TestSourceFactory.build())]
+        )
+
+        async with GitHubActionsProvider.from_config(static_config) as provider:
+            state = await provider.dispatch_scanner_tests(
+                scanner_id="org/scanner",
+                test_definition=test_definition,
+                registry_ref="abc123",
+                registry_repo="org/registry",
+            )
+
+        assert state.dispatch_id == "static-dispatch-id"
+
     async def test_raises_on_dispatch_failure(
         self,
         provider: GitHubActionsProvider,

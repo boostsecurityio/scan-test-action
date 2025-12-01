@@ -1,0 +1,80 @@
+name: 'Scanner Registry Test Action'
+description: 'Run scanner tests when changes are made to the scanner registry'
+author: 'BoostSecurity'
+
+branding:
+  icon: 'check-circle'
+  color: 'blue'
+
+inputs:
+  provider:
+    description: 'CI/CD provider to use (github-actions, gitlab-ci, azure-devops, bitbucket)'
+    required: true
+  provider-config:
+    description: 'JSON configuration for the selected provider. See README for schema per provider.'
+    required: true
+  registry-path:
+    description: 'Path to scanner registry repository'
+    required: true
+    default: '.'
+  registry-repo:
+    description: 'Registry repository identifier (org/repo format)'
+    required: true
+  base-ref:
+    description: 'Base git reference to compare against'
+    required: true
+    default: 'origin/main'
+
+outputs:
+  results:
+    description: 'JSON-formatted test results'
+    value: ${{ steps.run-tests.outputs.results }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install Poetry
+      shell: bash
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        cd ${{ github.action_path }}
+        poetry install --only main
+
+    - name: Run tests
+      id: run-tests
+      shell: bash
+      env:
+        PROVIDER_CONFIG: ${{ inputs.provider-config }}
+      run: |
+        REGISTRY_PATH=$(realpath "${{ inputs.registry-path }}")
+
+        # Use head.sha for pull_request events, GITHUB_SHA otherwise
+        if [ "${{ github.event_name }}" == "pull_request" ]; then
+          REGISTRY_REF="${{ github.event.pull_request.head.sha }}"
+        else
+          REGISTRY_REF="${GITHUB_SHA}"
+        fi
+
+        cd ${{ github.action_path }}
+        RESULTS=$(poetry run python -m scan_test_action.cli \
+          --provider "${{ inputs.provider }}" \
+          --provider-config "$PROVIDER_CONFIG" \
+          --registry-path "$REGISTRY_PATH" \
+          --registry-repo "${{ inputs.registry-repo }}" \
+          --registry-ref "$REGISTRY_REF" \
+          --base-ref "${{ inputs.base-ref }}")
+        {
+          echo "results<<EOF"
+          echo "$RESULTS"
+          echo "EOF"
+        } >> $GITHUB_OUTPUT

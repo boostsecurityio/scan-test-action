@@ -77,7 +77,10 @@ class GitHubActionsProvider(PipelineProvider[DispatchState]):
         registry_repo: str,
     ) -> DispatchState:
         """Dispatch workflow and return state for polling."""
-        dispatch_id = str(uuid.uuid4())
+        if self.config.dispatch_id_mode == "static":
+            dispatch_id = "static-dispatch-id"
+        else:
+            dispatch_id = str(uuid.uuid4())
         dispatch_time = datetime.now(timezone.utc)
 
         matrix_entries = [
