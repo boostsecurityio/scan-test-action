@@ -41,6 +41,14 @@
 - **Pydantic for API responses**: Parse third-party API responses with Pydantic models containing only consumed fields
 - **Dispatch ID for matching**: Generate UUID on dispatch, match in workflow display_title for deterministic run finding
 
+### Provider Plugin System
+
+- **Entry points for registration**: Providers are registered in `pyproject.toml` under `[tool.poetry.plugins."scan_test_action.providers"]`
+- **Manifest as instance, not class**: Use `provider_manifest = ProviderManifest(...)` not subclasses - simpler when no behavior is added
+- **Pass factory directly**: Store `provider_factory=Provider.from_config` directly instead of storing the class and calling `from_config` indirectly - avoids `type: ignore` hacks
+- **snake_case for module-level instances**: Use `github_actions_manifest` not `GitHubActionsManifest` for instances
+- **Run `make install` after modifying plugins**: Entry points are only updated when the package is reinstalled
+
 ### Provider Testing
 
 - **Integration tests with aioresponses**: Mock HTTP calls using `aioresponses` fixture from `tests/integration/conftest.py`
