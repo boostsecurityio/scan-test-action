@@ -20,7 +20,8 @@
 - Models: `scan_test_action/models/`
 - Unit tests: `tests/unit/`
 - Integration tests: `tests/integration/`
-- Test fixtures: `tests/integration/conftest.py`
+- Module tests: `tests/module/` (E2E tests using act + WireMock)
+- Test fixtures: `tests/integration/conftest.py`, `tests/module/conftest.py`
 
 ### Models
 
@@ -54,6 +55,19 @@
 - **Integration tests with aioresponses**: Mock HTTP calls using `aioresponses` fixture from `tests/integration/conftest.py`
 - **Provider fixture**: Create provider via `from_config` async context manager in fixture
 - **Configurable base URL**: Include `api_base_url` in config with default, override in tests for mocking
+
+### Module Testing (E2E with act + WireMock)
+
+Module tests run the full GitHub Action using `act` locally with WireMock mocking provider APIs.
+
+- **act for local GitHub Actions**: Use `act push --network {network} -j test` to run workflows locally in Docker
+- **WireMock testcontainers**: Use `WireMockContainer` from `wiremock.testing.testcontainer` for API mocking
+- **Docker networking**: Containers communicate via Docker network, not localhost - use `http://wiremock:8080` as API base URL
+- **Session-scoped fixtures**: WireMock and network fixtures are session-scoped for efficiency across tests
+- **Static dispatch_id for WireMock**: Use `dispatch_id_mode: "static"` in GitHub Actions provider config since WireMock cannot share state between POST dispatch and GET poll requests
+- **Future timestamps**: Use timestamps in the future (e.g., 2099) for mock workflow runs to pass validation
+- **Content-Type header required**: WireMock responses must include `Content-Type: application/json` for aiohttp to parse JSON
+- **Local action mapping**: Use `--local-repository test-action/scan-test-action@main={path}` to map workflow action references to local code
 
 ### Unit Testing with Mocks
 
