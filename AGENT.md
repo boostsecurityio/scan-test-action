@@ -47,6 +47,15 @@
 - **Provider fixture**: Create provider via `from_config` async context manager in fixture
 - **Configurable base URL**: Include `api_base_url` in config with default, override in tests for mocking
 
+### Unit Testing with Mocks
+
+- **Use `Mock(spec=Class)`**: Pass the class as spec parameter to get attribute validation
+- **No need to pre-define async methods**: With `spec=`, Mock auto-creates attributes on access
+- **Type annotation is `Mock`**: Use `Mock` type in test function parameters, not `MagicMock`
+- **Behavioral tests only**: Don't patch internal functions; drive tests through injected dependencies
+- **Don't test simple dataclasses**: No need to test that frozen dataclasses are immutable
+- **Standalone functions over classes**: When there's only one test suite, use plain test functions instead of a class
+
 ### Git Conventions
 
 - **Branch naming**: `{TICKET}-{N}-{description}` for stacked PRs where N is the stack number
