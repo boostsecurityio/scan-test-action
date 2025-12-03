@@ -37,6 +37,10 @@ STATUS_TO_RESULT: Mapping[
 class GitLabCIProvider(PipelineProvider[str]):
     """GitLab CI pipeline provider.
 
+    Uses separate tokens for dispatch and polling:
+    - trigger_token: Pipeline Trigger Token for POST /trigger/pipeline (no auth header)
+    - api_token: Project Access Token for GET /pipelines/:id (Bearer token auth)
+
     Dispatch state is the pipeline ID string since GitLab returns it directly.
     """
 
@@ -50,13 +54,8 @@ class GitLabCIProvider(PipelineProvider[str]):
         cls, config: GitLabCIConfig
     ) -> AsyncGenerator["GitLabCIProvider", None]:
         """Create provider with managed session lifecycle."""
-        headers = {
-            "PRIVATE-TOKEN": config.token.get_secret_value(),
-            "Content-Type": "application/json",
-        }
         async with aiohttp.ClientSession(
             base_url=config.api_base_url,
-            headers=headers,
         ) as session:
             yield cls(
                 config=config,
@@ -71,24 +70,23 @@ class GitLabCIProvider(PipelineProvider[str]):
         registry_ref: str,
         registry_repo: str,
     ) -> str:
-        """Dispatch pipeline and return pipeline ID for polling."""
+        """Dispatch pipeline using Pipeline Trigger Token and return pipeline ID."""
         matrix_entries = [
             {"test_name": test.name, "scan_path": path}
             for test in test_definition.tests
             for path in test.scan_paths
         ]
 
-        variables = [
-            {"key": "SCANNER_ID", "value": scanner_id},
-            {"key": "REGISTRY_REF", "value": registry_ref},
-            {"key": "REGISTRY_REPO", "value": registry_repo},
-            {"key": "MATRIX_TESTS", "value": json.dumps(matrix_entries)},
-        ]
-
-        url = f"projects/{self.encoded_project_id}/pipeline"
+        url = f"projects/{self.encoded_project_id}/trigger/pipeline"
         payload = {
             "ref": self.config.ref,
-            "variables": variables,
+            "token": self.config.trigger_token.get_secret_value(),
+            "variables": {
+                "SCANNER_ID": scanner_id,
+                "REGISTRY_REF": registry_ref,
+                "REGISTRY_REPO": registry_repo,
+                "MATRIX_TESTS": json.dumps(matrix_entries),
+            },
         }
 
         async with self.session.post(url, json=payload) as response:
@@ -126,10 +124,13 @@ class GitLabCIProvider(PipelineProvider[str]):
         ]
 
     async def get_pipeline(self, pipeline_id: str) -> Pipeline:
-        """Get pipeline by ID."""
+        """Get pipeline by ID using the API token."""
         url = f"projects/{self.encoded_project_id}/pipelines/{pipeline_id}"
+        headers = {
+            "Authorization": f"Bearer {self.config.api_token.get_secret_value()}"
+        }
 
-        async with self.session.get(url) as response:
+        async with self.session.get(url, headers=headers) as response:
             if response.status != 200:
                 text = await response.text()
                 raise RuntimeError(f"Failed to get pipeline: {response.status} {text}")
