@@ -72,9 +72,8 @@ class GitLabCIProvider(PipelineProvider[str]):
     ) -> str:
         """Dispatch pipeline using Pipeline Trigger Token and return pipeline ID."""
         matrix_entries = [
-            {"test_name": test.name, "scan_path": path}
-            for test in test_definition.tests
-            for path in test.scan_paths
+            entry.model_dump(mode="json")
+            for entry in test_definition.to_matrix_entries()
         ]
 
         url = f"projects/{self.encoded_project_id}/trigger/pipeline"

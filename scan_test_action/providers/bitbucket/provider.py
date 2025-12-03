@@ -80,9 +80,8 @@ class BitbucketProvider(PipelineProvider[DispatchState]):
     ) -> DispatchState:
         """Dispatch pipeline and return state for polling."""
         matrix_entries = [
-            {"test_name": test.name, "scan_path": path}
-            for test in test_definition.tests
-            for path in test.scan_paths
+            entry.model_dump(mode="json")
+            for entry in test_definition.to_matrix_entries()
         ]
 
         variables = [
