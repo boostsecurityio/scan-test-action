@@ -111,6 +111,7 @@ class TestDispatchScannerTests:
                         ref="main",
                     ),
                     scan_paths=["src", "lib"],
+                    timeout="5m",
                 ),
                 TestFactory.build(
                     name="container scan",
@@ -120,6 +121,7 @@ class TestDispatchScannerTests:
                         ref="v1.0.0",
                     ),
                     scan_paths=["."],
+                    timeout="5m",
                 ),
             ]
         )
@@ -137,9 +139,30 @@ class TestDispatchScannerTests:
 
         matrix = json.loads(payload["inputs"]["matrix"])
         assert len(matrix) == 3
-        assert matrix[0] == {"test_name": "source scan", "scan_path": "src"}
-        assert matrix[1] == {"test_name": "source scan", "scan_path": "lib"}
-        assert matrix[2] == {"test_name": "container scan", "scan_path": "."}
+        assert matrix[0] == {
+            "test_name": "source scan",
+            "test_type": "source-code",
+            "source_url": "https://github.com/org/repo1.git",
+            "source_ref": "main",
+            "scan_path": "src",
+            "timeout": "5m",
+        }
+        assert matrix[1] == {
+            "test_name": "source scan",
+            "test_type": "source-code",
+            "source_url": "https://github.com/org/repo1.git",
+            "source_ref": "main",
+            "scan_path": "lib",
+            "timeout": "5m",
+        }
+        assert matrix[2] == {
+            "test_name": "container scan",
+            "test_type": "container-image",
+            "source_url": "https://github.com/org/repo2.git",
+            "source_ref": "v1.0.0",
+            "scan_path": ".",
+            "timeout": "5m",
+        }
 
     async def test_generates_unique_dispatch_ids(
         self,
