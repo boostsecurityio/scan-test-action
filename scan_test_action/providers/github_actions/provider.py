@@ -104,6 +104,20 @@ class GitHubActionsProvider(PipelineProvider[DispatchState]):
             },
         }
 
+        log.info(
+            "Dispatching workflow: api_base_url=%s, url=%s, owner=%s, repo=%s, "
+            "workflow_id=%s, ref=%s, scanner_id=%s, registry_ref=%s, registry_repo=%s",
+            self.config.api_base_url,
+            url,
+            self.config.owner,
+            self.config.repo,
+            self.config.workflow_id,
+            self.config.ref,
+            scanner_id,
+            registry_ref,
+            registry_repo,
+        )
+
         async with self.session.post(url, json=payload) as response:
             if response.status != 204:
                 text = await response.text()
