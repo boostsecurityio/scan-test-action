@@ -29,12 +29,12 @@ def test_action_with_gitlab_ci_provider(
     # Clear any existing mappings
     Mappings.delete_all_mappings()
 
-    # Mock pipeline dispatch (POST)
+    # Mock pipeline dispatch via trigger endpoint (POST)
     Mappings.create_mapping(
         Mapping(
             request=MappingRequest(
                 method=HttpMethods.POST,
-                url_path_pattern="/api/v4/projects/.*/pipeline",
+                url_path_pattern="/api/v4/projects/.*/trigger/pipeline",
             ),
             response=MappingResponse(
                 status=201,
@@ -73,7 +73,8 @@ def test_action_with_gitlab_ci_provider(
 
     provider_config = json.dumps(
         {
-            "token": "glpat-test-token",
+            "trigger_token": "glptt-trigger-token-123",
+            "api_token": "glpat-api-token-456",
             "project_id": "test-group/test-project",
             "api_base_url": f"{wiremock_url}/api/v4/",
         }

@@ -274,7 +274,8 @@ The `GitLabCIProvider` dispatches tests to a GitLab CI pipeline and polls for co
     provider: gitlab-ci
     provider-config: |
       {
-        "token": "${{ secrets.GITLAB_TOKEN }}",
+        "trigger_token": "${{ secrets.GITLAB_TRIGGER_TOKEN }}",
+        "api_token": "${{ secrets.GITLAB_API_TOKEN }}",
         "project_id": "boostsecurityio/test-runner-gitlab",
         "ref": "main"
       }
@@ -282,9 +283,22 @@ The `GitLabCIProvider` dispatches tests to a GitLab CI pipeline and polls for co
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `token` | Yes | GitLab Personal Access Token with API permissions |
+| `trigger_token` | Yes | GitLab Pipeline Trigger Token for dispatching pipelines |
+| `api_token` | Yes | GitLab Project Access Token (Guest role, read_api scope) for polling |
 | `project_id` | Yes | Project ID (numeric) or path (e.g., "org/project") |
 | `ref` | No | Branch to run pipeline on (default: "main") |
+
+### Authentication
+
+The provider uses two separate tokens with minimal privileges:
+
+1. **Pipeline Trigger Token** (`trigger_token`): Created in GitLab project settings under CI/CD > Pipeline trigger tokens. Used to dispatch pipelines via the `/trigger/pipeline` endpoint without requiring any header authentication.
+
+2. **Project Access Token** (`api_token`): Created in GitLab project settings under Access Tokens. Requires:
+   - Role: Guest (minimum privilege needed)
+   - Scope: `read_api`
+
+   Used with Bearer token authentication to poll pipeline status via the standard API endpoints.
 
 ### Pipeline Variables
 

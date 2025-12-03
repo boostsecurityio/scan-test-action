@@ -25,7 +25,8 @@ API_BASE_URL = "http://gitlab.test/api/v4/"
 def config() -> GitLabCIConfig:
     """Create test configuration."""
     return GitLabCIConfig(
-        token=SecretStr("glpat-test123"),
+        trigger_token=SecretStr("glptt-trigger-token-123"),
+        api_token=SecretStr("glpat-api-token-456"),
         project_id="12345",
         api_base_url=API_BASE_URL,
     )
@@ -48,8 +49,8 @@ class TestDispatchScannerTests:
         provider: GitLabCIProvider,
         aioresponses: aioresponses_cls,
     ) -> None:
-        """Dispatches pipeline with correct API parameters."""
-        dispatch_url = f"{API_BASE_URL}projects/12345/pipeline"
+        """Dispatches pipeline via trigger endpoint with correct API parameters."""
+        dispatch_url = f"{API_BASE_URL}projects/12345/trigger/pipeline"
         aioresponses.post(
             dispatch_url,
             status=201,
@@ -79,11 +80,10 @@ class TestDispatchScannerTests:
         call = aioresponses.requests[("POST", URL(dispatch_url))][0]
         payload = call.kwargs["json"]
         assert payload["ref"] == "main"
-        assert len(payload["variables"]) == 4
-        variables = {v["key"]: v["value"] for v in payload["variables"]}
-        assert variables["SCANNER_ID"] == "org/scanner"
-        assert variables["REGISTRY_REF"] == "abc123"
-        assert variables["REGISTRY_REPO"] == "org/registry"
+        assert payload["token"] == "glptt-trigger-token-123"
+        assert payload["variables"]["SCANNER_ID"] == "org/scanner"
+        assert payload["variables"]["REGISTRY_REF"] == "abc123"
+        assert payload["variables"]["REGISTRY_REPO"] == "org/registry"
 
     async def test_dispatches_with_multiple_tests_and_paths(
         self,
@@ -91,7 +91,7 @@ class TestDispatchScannerTests:
         aioresponses: aioresponses_cls,
     ) -> None:
         """Dispatches pipeline with multiple tests and scan paths in matrix."""
-        dispatch_url = f"{API_BASE_URL}projects/12345/pipeline"
+        dispatch_url = f"{API_BASE_URL}projects/12345/trigger/pipeline"
         aioresponses.post(
             dispatch_url,
             status=201,
@@ -130,10 +130,9 @@ class TestDispatchScannerTests:
 
         call = aioresponses.requests[("POST", URL(dispatch_url))][0]
         payload = call.kwargs["json"]
-        variables = {v["key"]: v["value"] for v in payload["variables"]}
         import json
 
-        matrix = json.loads(variables["MATRIX_TESTS"])
+        matrix = json.loads(payload["variables"]["MATRIX_TESTS"])
         assert len(matrix) == 3
         assert matrix[0] == {"test_name": "source scan", "scan_path": "src"}
         assert matrix[1] == {"test_name": "source scan", "scan_path": "lib"}
@@ -146,7 +145,7 @@ class TestDispatchScannerTests:
     ) -> None:
         """Raises RuntimeError when dispatch fails."""
         aioresponses.post(
-            f"{API_BASE_URL}projects/12345/pipeline",
+            f"{API_BASE_URL}projects/12345/trigger/pipeline",
             status=400,
             body="Bad Request",
         )
@@ -170,7 +169,7 @@ class TestDispatchScannerTests:
     ) -> None:
         """Raises RuntimeError when pipeline ID is missing from response."""
         aioresponses.post(
-            f"{API_BASE_URL}projects/12345/pipeline",
+            f"{API_BASE_URL}projects/12345/trigger/pipeline",
             status=201,
             payload={"web_url": "https://gitlab.com/project/pipelines/789"},
         )
@@ -298,9 +297,10 @@ class TestGetPipeline:
         provider: GitLabCIProvider,
         aioresponses: aioresponses_cls,
     ) -> None:
-        """Returns pipeline model from API response."""
+        """Returns pipeline model from API response with Bearer token auth."""
+        get_url = f"{API_BASE_URL}projects/12345/pipelines/789"
         aioresponses.get(
-            f"{API_BASE_URL}projects/12345/pipelines/789",
+            get_url,
             payload=pipeline(pipeline_id=789, ref="feature-branch"),
         )
 
@@ -309,6 +309,9 @@ class TestGetPipeline:
         assert result.id == 789
         assert result.ref == "feature-branch"
         assert result.status == "success"
+
+        call = aioresponses.requests[("GET", URL(get_url))][0]
+        assert call.kwargs["headers"]["Authorization"] == "Bearer glpat-api-token-456"
 
 
 class TestProjectIdEncoding:
@@ -320,7 +323,8 @@ class TestProjectIdEncoding:
     ) -> None:
         """URL-encodes project path for API calls."""
         config = GitLabCIConfig(
-            token=SecretStr("glpat-test123"),
+            trigger_token=SecretStr("glptt-trigger-token-123"),
+            api_token=SecretStr("glpat-api-token-456"),
             project_id="boostsecurityio/martin/test-runner",
             api_base_url=API_BASE_URL,
         )
@@ -328,7 +332,7 @@ class TestProjectIdEncoding:
         async with GitLabCIProvider.from_config(config) as provider:
             encoded_url = (
                 f"{API_BASE_URL}projects/"
-                "boostsecurityio%2Fmartin%2Ftest-runner/pipeline"
+                "boostsecurityio%2Fmartin%2Ftest-runner/trigger/pipeline"
             )
             aioresponses.post(
                 encoded_url,
