@@ -46,6 +46,7 @@ def pipeline(
 def create_pipeline_response(
     *,
     uuid: str = "{abc-123-def}",
+    build_number: int = 42,
 ) -> dict[str, Any]:
     """Create a pipeline creation response payload.
 
@@ -53,6 +54,7 @@ def create_pipeline_response(
     """
     return {
         "uuid": uuid,
+        "build_number": build_number,
         "state": {"name": "PENDING"},
         "created_on": "2099-01-01T12:00:00.000000+00:00",
         "repository": {
