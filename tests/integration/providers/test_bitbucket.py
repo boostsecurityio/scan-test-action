@@ -51,12 +51,10 @@ class TestDispatchScannerTests:
     ) -> None:
         """Dispatches pipeline with correct API parameters."""
         dispatch_url = f"{API_BASE_URL}repositories/test-workspace/test-repo/pipelines/"
-        run_url = "https://bitbucket.org/test-workspace/test-repo/pipelines/results/42"
         aioresponses.post(
             dispatch_url,
             status=201,
-            payload=create_pipeline_response(uuid="{abc-123-def}"),
-            headers={"Location": run_url},
+            payload=create_pipeline_response(uuid="{abc-123-def}", build_number=42),
         )
 
         test_definition = TestDefinitionFactory.build(
@@ -77,7 +75,10 @@ class TestDispatchScannerTests:
         )
 
         assert dispatch_state.pipeline_uuid == "{abc-123-def}"
-        assert dispatch_state.run_url == run_url
+        assert (
+            dispatch_state.run_url
+            == "https://bitbucket.org/test-workspace/test-repo/pipelines/results/42"
+        )
 
         aioresponses.assert_called_once()  # type: ignore[no-untyped-call]
         call = aioresponses.requests[("POST", URL(dispatch_url))][0]
@@ -101,8 +102,7 @@ class TestDispatchScannerTests:
         aioresponses.post(
             dispatch_url,
             status=201,
-            payload=create_pipeline_response(uuid="{abc-123-def}"),
-            headers={"Location": "https://bitbucket.org/ws/repo/pipelines/results/42"},
+            payload=create_pipeline_response(uuid="{abc-123-def}", build_number=42),
         )
 
         test_definition = TestDefinitionFactory.build(
@@ -192,32 +192,6 @@ class TestDispatchScannerTests:
                 registry_ref="abc123",
                 registry_repo="org/registry",
             )
-
-    async def test_handles_missing_location_header(
-        self,
-        provider: BitbucketProvider,
-        aioresponses: aioresponses_cls,
-    ) -> None:
-        """Handles missing Location header with empty run URL."""
-        aioresponses.post(
-            f"{API_BASE_URL}repositories/test-workspace/test-repo/pipelines/",
-            status=201,
-            payload=create_pipeline_response(uuid="{abc-123-def}"),
-        )
-
-        test_definition = TestDefinitionFactory.build(
-            tests=[TestFactory.build(source=TestSourceFactory.build())]
-        )
-
-        dispatch_state = await provider.dispatch_scanner_tests(
-            scanner_id="org/scanner",
-            test_definition=test_definition,
-            registry_ref="abc123",
-            registry_repo="org/registry",
-        )
-
-        assert dispatch_state.pipeline_uuid == "{abc-123-def}"
-        assert dispatch_state.run_url == ""
 
 
 class TestPollStatus:

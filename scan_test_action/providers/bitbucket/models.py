@@ -34,3 +34,4 @@ class PipelineCreateResponse(BaseModel):
     """Response from pipeline creation."""
 
     uuid: str
+    build_number: int

@@ -111,9 +111,12 @@ class BitbucketProvider(PipelineProvider[DispatchState]):
                     f"Failed to trigger pipeline: {response.status} {text}"
                 )
             data = await response.json()
-            run_url = response.headers.get("Location", "")
 
         create_response = PipelineCreateResponse.model_validate(data)
+        run_url = (
+            f"https://bitbucket.org/{self.config.workspace}/"
+            f"{self.config.repo_slug}/pipelines/results/{create_response.build_number}"
+        )
 
         log.info("Created pipeline %s for scanner %s", create_response.uuid, scanner_id)
         return DispatchState(
