@@ -53,34 +53,32 @@ def wiremock_url(wiremock_server_name: str) -> str:
     return f"http://{wiremock_server_name}:8080"
 
 
-@pytest.fixture(scope="session")
-def registry_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """Create a scanner registry with test data."""
-    registry = tmp_path_factory.mktemp("registry")
-
+@pytest.fixture
+def registry_path(tmp_path: Path) -> Path:
+    """Create an isolated git repository for each test."""
     subprocess.run(
         ["git", "init"],
-        cwd=registry,
+        cwd=tmp_path,
         check=True,
         capture_output=True,
     )
     subprocess.run(
         ["git", "config", "user.email", "test@example.com"],
-        cwd=registry,
+        cwd=tmp_path,
         check=True,
         capture_output=True,
     )
     subprocess.run(
         ["git", "config", "user.name", "Test"],
-        cwd=registry,
+        cwd=tmp_path,
         check=True,
         capture_output=True,
     )
 
-    return registry
+    return tmp_path
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def base_commit(registry_path: Path) -> str:
     """Create initial commit (base ref for comparison)."""
     readme = registry_path / "README.md"
@@ -108,7 +106,7 @@ def base_commit(registry_path: Path) -> str:
     return result.stdout.strip()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def head_commit(registry_path: Path, base_commit: str) -> str:
     """Create scanner with test definition and return head commit."""
     scanner_dir = registry_path / "scanners" / "test-org" / "test-scanner"

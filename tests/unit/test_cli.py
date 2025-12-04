@@ -10,6 +10,7 @@ from scan_test_action.cli import (
     format_output,
     load_test_definitions,
     log_results_summary,
+    parse_fallback_scanners,
     run,
 )
 from scan_test_action.models.result import TestResult
@@ -210,6 +211,42 @@ def test_format_output_mixed_results() -> None:
     assert output["failed"] == 1
     assert output["errors"] == 1
     assert output["timeouts"] == 1
+
+
+class TestParseFallbackScanners:
+    """Tests for parse_fallback_scanners."""
+
+    def test_parses_single_scanner(self) -> None:
+        """Parses a single scanner ID."""
+        result = parse_fallback_scanners("org/scanner")
+
+        assert result == ("org/scanner",)
+
+    def test_parses_multiple_scanners(self) -> None:
+        """Parses comma-separated scanner IDs."""
+        result = parse_fallback_scanners("org1/scanner1,org2/scanner2")
+
+        assert result == ("org1/scanner1", "org2/scanner2")
+
+    def test_trims_whitespace(self) -> None:
+        """Trims whitespace from scanner IDs."""
+        result = parse_fallback_scanners("  org1/scanner1 , org2/scanner2  ")
+
+        assert result == ("org1/scanner1", "org2/scanner2")
+
+    def test_ignores_empty_entries(self) -> None:
+        """Ignores empty entries from consecutive commas."""
+        result = parse_fallback_scanners("org1/scanner1,,org2/scanner2,")
+
+        assert result == ("org1/scanner1", "org2/scanner2")
+
+    def test_returns_empty_for_empty_string(self) -> None:
+        """Returns empty tuple for empty string."""
+        assert parse_fallback_scanners("") == ()
+
+    def test_returns_empty_for_whitespace_only(self) -> None:
+        """Returns empty tuple for whitespace-only string."""
+        assert parse_fallback_scanners("   ") == ()
 
 
 class TestLoadTestDefinitions:
