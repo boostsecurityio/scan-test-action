@@ -15,6 +15,37 @@ from scan_test_action.orchestrator import ScannerResult, TestOrchestrator
 from scan_test_action.providers.loading import load_provider_manifest
 from scan_test_action.scanner_detector import get_scanners_to_test
 
+STATUS_SYMBOLS = {
+    "success": "✓",
+    "failure": "✗",
+    "error": "!",
+    "timeout": "⏱",
+}
+
+
+def log_results_summary(
+    log: logging.Logger, scanner_results: Sequence[ScannerResult]
+) -> None:
+    """Log a formatted summary of test results with pipeline URLs."""
+    log.info("=" * 80)
+    log.info("Test Results Summary:")
+    log.info("=" * 80)
+
+    for scanner_result in scanner_results:
+        for test_result in scanner_result.results:
+            symbol = STATUS_SYMBOLS.get(test_result.status, "?")
+            log.info(
+                "%s %s: %s (%.2fs)",
+                symbol,
+                scanner_result.scanner_id,
+                test_result.status,
+                test_result.duration,
+            )
+            if test_result.run_url:
+                log.info("  Run URL: %s", test_result.run_url)
+            if test_result.message:
+                log.info("  Message: %s", test_result.message)
+
 
 async def run(
     provider_key: str,
@@ -58,6 +89,8 @@ async def run(
         scanner_results = await orchestrator.run_tests(
             test_definitions, registry_repo, registry_ref
         )
+
+    log_results_summary(log, scanner_results)
 
     output = format_output(scanner_results)
     print(json.dumps(output, indent=2))
