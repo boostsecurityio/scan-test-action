@@ -335,6 +335,28 @@ class TestPollStatus:
         assert results is not None
         assert results[0].status == expected_status
 
+    async def test_handles_unknown_result_as_error(
+        self,
+        provider: BitbucketProvider,
+        aioresponses: aioresponses_cls,
+    ) -> None:
+        """Treats unknown result values as error."""
+        from scan_test_action.providers.bitbucket.provider import DispatchState
+
+        aioresponses.get(
+            f"{API_BASE_URL}repositories/test-workspace/test-repo/pipelines/%7Babc-123-def%7D",
+            payload=pipeline(state_name="COMPLETED", result_name="UNKNOWN_RESULT"),
+        )
+
+        dispatch_state = DispatchState(
+            pipeline_uuid="{abc-123-def}",
+            run_url="https://bitbucket.org/test-workspace/test-repo/pipelines/results/42",
+        )
+        results = await provider.poll_status(dispatch_state)
+
+        assert results is not None
+        assert results[0].status == "error"
+
     @pytest.mark.parametrize(
         "state_name",
         ["STOPPED", "ERROR", "FAILED"],

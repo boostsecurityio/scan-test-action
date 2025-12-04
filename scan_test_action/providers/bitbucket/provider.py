@@ -16,18 +16,17 @@ from scan_test_action.providers.bitbucket.config import BitbucketConfig
 from scan_test_action.providers.bitbucket.models import (
     Pipeline,
     PipelineCreateResponse,
-    PipelineResultName,
-    PipelineStateName,
 )
 
 log = logging.getLogger(__name__)
 
-COMPLETED_STATES: frozenset[PipelineStateName] = frozenset(
+# Bitbucket API state values are poorly documented. These are the known terminal states.
+COMPLETED_STATES: frozenset[str] = frozenset(
     ["COMPLETED", "STOPPED", "ERROR", "FAILED"]
 )
 
 RESULT_TO_STATUS: Mapping[
-    PipelineResultName | None, Literal["success", "failure", "timeout", "error"]
+    str | None, Literal["success", "failure", "timeout", "error"]
 ] = {
     "SUCCESSFUL": "success",
     "FAILED": "failure",
@@ -141,7 +140,7 @@ class BitbucketProvider(PipelineProvider[DispatchState]):
             duration = (pipeline.completed_on - pipeline.created_on).total_seconds()
 
         result_name = pipeline.state.result.name if pipeline.state.result else None
-        status = RESULT_TO_STATUS[result_name]
+        status = RESULT_TO_STATUS.get(result_name, "error")
 
         return [
             TestResult(
