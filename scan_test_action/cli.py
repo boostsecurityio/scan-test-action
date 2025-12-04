@@ -16,10 +16,10 @@ from scan_test_action.providers.loading import load_provider_manifest
 from scan_test_action.scanner_detector import get_scanners_to_test
 
 STATUS_SYMBOLS = {
-    "success": "✓",
-    "failure": "✗",
-    "error": "!",
-    "timeout": "⏱",
+    "success": "✅",
+    "failure": "❌",
+    "error": "❗",
+    "timeout": "⏱️",
 }
 
 

@@ -36,7 +36,7 @@ def test_log_results_summary_success(caplog: pytest.LogCaptureFixture) -> None:
         log_results_summary(logging.getLogger(), scanner_results)
 
     assert "Test Results Summary:" in caplog.text
-    assert "✓ org/scanner: success (10.50s)" in caplog.text
+    assert "✅ org/scanner: success (10.50s)" in caplog.text
     assert "Run URL: https://example.com/run/123" in caplog.text
 
 
@@ -58,7 +58,7 @@ def test_log_results_summary_failure(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.INFO):
         log_results_summary(logging.getLogger(), scanner_results)
 
-    assert "✗ org/scanner: failure (5.00s)" in caplog.text
+    assert "❌ org/scanner: failure (5.00s)" in caplog.text
     assert "Run URL: https://example.com/run/456" in caplog.text
 
 
@@ -80,7 +80,7 @@ def test_log_results_summary_with_message(caplog: pytest.LogCaptureFixture) -> N
     with caplog.at_level(logging.INFO):
         log_results_summary(logging.getLogger(), scanner_results)
 
-    assert "! org/scanner: error (0.00s)" in caplog.text
+    assert "❗ org/scanner: error (0.00s)" in caplog.text
     assert "Message: API connection failed" in caplog.text
 
 
@@ -102,7 +102,7 @@ def test_log_results_summary_timeout(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.INFO):
         log_results_summary(logging.getLogger(), scanner_results)
 
-    assert "⏱ org/scanner: timeout (600.00s)" in caplog.text
+    assert "⏱️ org/scanner: timeout (600.00s)" in caplog.text
 
 
 def test_log_results_summary_multiple_scanners(
@@ -135,9 +135,9 @@ def test_log_results_summary_multiple_scanners(
     with caplog.at_level(logging.INFO):
         log_results_summary(logging.getLogger(), scanner_results)
 
-    assert "✓ org/scanner1: success (10.00s)" in caplog.text
+    assert "✅ org/scanner1: success (10.00s)" in caplog.text
     assert "https://example.com/run/1" in caplog.text
-    assert "✗ org/scanner2: failure (20.00s)" in caplog.text
+    assert "❌ org/scanner2: failure (20.00s)" in caplog.text
     assert "https://example.com/run/2" in caplog.text
 
 
