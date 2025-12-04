@@ -47,6 +47,13 @@ def log_results_summary(
                 log.info("  Message: %s", test_result.message)
 
 
+def parse_fallback_scanners(fallback_scanners: str) -> Sequence[str]:
+    """Parse comma-separated fallback scanner IDs."""
+    if not fallback_scanners.strip():
+        return ()
+    return tuple(s.strip() for s in fallback_scanners.split(",") if s.strip())
+
+
 async def run(
     provider_key: str,
     provider_config_json: str,
@@ -54,6 +61,7 @@ async def run(
     registry_repo: str,
     registry_ref: str,
     base_ref: str,
+    fallback_scanners: Sequence[str] = (),
 ) -> int:
     """Run scanner tests and return exit code."""
     log = logging.getLogger("scan_test_action")
@@ -65,7 +73,9 @@ async def run(
     config = manifest.config_cls(**config_dict)
 
     log.info("Detecting changed scanners (base_ref=%s)", base_ref)
-    changed_scanners = await get_scanners_to_test(registry_path, base_ref, "HEAD")
+    changed_scanners = await get_scanners_to_test(
+        registry_path, base_ref, "HEAD", fallback_scanners
+    )
 
     if not changed_scanners:
         log.info("No changed scanners detected")
@@ -178,6 +188,11 @@ def main() -> None:
         required=True,
         help="Base git reference to compare against",
     )
+    parser.add_argument(
+        "--fallback-scanners",
+        default="",
+        help="Comma-separated scanner IDs to test when workflow files change",
+    )
 
     args = parser.parse_args()
 
@@ -195,6 +210,7 @@ def main() -> None:
             registry_repo=args.registry_repo,
             registry_ref=args.registry_ref,
             base_ref=args.base_ref,
+            fallback_scanners=parse_fallback_scanners(args.fallback_scanners),
         )
     )
     sys.exit(exit_code)

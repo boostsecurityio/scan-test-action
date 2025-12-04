@@ -12,6 +12,7 @@ async def get_scanners_to_test(
     registry_path: Path,
     base_ref: str,
     head_ref: str,
+    fallback_scanners: Sequence[str] = (),
 ) -> Sequence[str]:
     """Determine which scanners need testing based on changed files.
 
@@ -19,6 +20,8 @@ async def get_scanners_to_test(
         registry_path: Path to the scanner registry repository
         base_ref: Base git reference (e.g., "origin/main")
         head_ref: Head git reference (e.g., "HEAD")
+        fallback_scanners: Scanner IDs to test when workflow files change
+            but no scanner files changed
 
     Returns:
         Scanner identifiers that need testing.
@@ -27,11 +30,23 @@ async def get_scanners_to_test(
     changed_files = await get_changed_files(registry_path, base_ref, head_ref)
     scanner_ids = extract_scanner_ids(changed_files)
 
-    return [
+    scanners_with_tests = [
         scanner_id
         for scanner_id in scanner_ids
         if has_test_definition(registry_path, scanner_id)
     ]
+
+    if scanners_with_tests:
+        return scanners_with_tests
+
+    if has_workflow_changes(changed_files) and fallback_scanners:
+        return sorted(
+            scanner_id
+            for scanner_id in fallback_scanners
+            if has_test_definition(registry_path, scanner_id)
+        )
+
+    return []
 
 
 def has_test_definition(registry_path: Path, scanner_id: str) -> bool:
@@ -122,3 +137,10 @@ def extract_scanner_ids(changed_files: Sequence[str]) -> Sequence[str]:
             scanner_ids.add(f"{parts[1]}/{parts[2]}")
 
     return sorted(scanner_ids)
+
+
+def has_workflow_changes(changed_files: Sequence[str]) -> bool:
+    """Check if any workflow files have changed."""
+    return any(
+        file_path.startswith(".github/workflows/") for file_path in changed_files
+    )

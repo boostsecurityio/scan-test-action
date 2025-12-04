@@ -10,6 +10,7 @@ from scan_test_action.scanner_detector import (
     get_changed_files,
     get_scanners_to_test,
     has_test_definition,
+    has_workflow_changes,
     ref_exists,
     resolve_ref,
 )
@@ -95,6 +96,134 @@ class TestGetScannersToTest:
         git_commit("update readme")
 
         result = await get_scanners_to_test(git_repo, base, "HEAD")
+
+        assert result == []
+
+    async def test_returns_fallback_scanners_on_workflow_change(
+        self,
+        git_repo: Path,
+        git_commit: CommitFn,
+        create_scanner: CreateScannerFn,
+    ) -> None:
+        """Returns fallback scanners when workflow files change."""
+        create_scanner("org/fallback-scanner", with_tests=True)
+        base = git_commit("initial with scanner")
+
+        workflows_dir = git_repo / ".github" / "workflows"
+        workflows_dir.mkdir(parents=True)
+        (workflows_dir / "test.yml").write_text("name: test")
+        git_commit("add workflow")
+
+        result = await get_scanners_to_test(
+            git_repo, base, "HEAD", fallback_scanners=["org/fallback-scanner"]
+        )
+
+        assert result == ["org/fallback-scanner"]
+
+    async def test_returns_multiple_fallback_scanners_sorted(
+        self,
+        git_repo: Path,
+        git_commit: CommitFn,
+        create_scanner: CreateScannerFn,
+    ) -> None:
+        """Returns multiple fallback scanners in sorted order."""
+        create_scanner("zorg/zebra", with_tests=True)
+        create_scanner("aorg/apple", with_tests=True)
+        base = git_commit("initial with scanners")
+
+        workflows_dir = git_repo / ".github" / "workflows"
+        workflows_dir.mkdir(parents=True)
+        (workflows_dir / "test.yml").write_text("name: test")
+        git_commit("add workflow")
+
+        result = await get_scanners_to_test(
+            git_repo, base, "HEAD", fallback_scanners=["zorg/zebra", "aorg/apple"]
+        )
+
+        assert result == ["aorg/apple", "zorg/zebra"]
+
+    async def test_ignores_fallback_without_tests(
+        self,
+        git_repo: Path,
+        git_commit: CommitFn,
+        create_scanner: CreateScannerFn,
+    ) -> None:
+        """Ignores fallback scanners that don't have tests.yaml."""
+        create_scanner("org/with-tests", with_tests=True)
+        create_scanner("org/without-tests", with_tests=False)
+        base = git_commit("initial with scanners")
+
+        workflows_dir = git_repo / ".github" / "workflows"
+        workflows_dir.mkdir(parents=True)
+        (workflows_dir / "test.yml").write_text("name: test")
+        git_commit("add workflow")
+
+        result = await get_scanners_to_test(
+            git_repo,
+            base,
+            "HEAD",
+            fallback_scanners=["org/with-tests", "org/without-tests"],
+        )
+
+        assert result == ["org/with-tests"]
+
+    async def test_scanner_changes_take_precedence_over_fallback(
+        self,
+        git_repo: Path,
+        git_commit: CommitFn,
+        create_scanner: CreateScannerFn,
+    ) -> None:
+        """Changed scanners take precedence over fallback scanners."""
+        create_scanner("org/fallback", with_tests=True)
+        base = git_commit("initial with fallback scanner")
+
+        create_scanner("org/changed", with_tests=True)
+        workflows_dir = git_repo / ".github" / "workflows"
+        workflows_dir.mkdir(parents=True)
+        (workflows_dir / "test.yml").write_text("name: test")
+        git_commit("add scanner and workflow")
+
+        result = await get_scanners_to_test(
+            git_repo, base, "HEAD", fallback_scanners=["org/fallback"]
+        )
+
+        assert result == ["org/changed"]
+
+    async def test_no_fallback_without_workflow_change(
+        self,
+        git_repo: Path,
+        git_commit: CommitFn,
+        create_scanner: CreateScannerFn,
+    ) -> None:
+        """Does not return fallback scanners when no workflow files changed."""
+        create_scanner("org/fallback", with_tests=True)
+        base = git_commit("initial with scanner")
+
+        (git_repo / "README.md").write_text("docs")
+        git_commit("update readme")
+
+        result = await get_scanners_to_test(
+            git_repo, base, "HEAD", fallback_scanners=["org/fallback"]
+        )
+
+        assert result == []
+
+    async def test_empty_fallback_parameter(
+        self,
+        git_repo: Path,
+        git_commit: CommitFn,
+    ) -> None:
+        """Returns empty list when fallback_scanners is empty."""
+        base = git_commit("initial")
+
+        workflows_dir = git_repo / ".github" / "workflows"
+        workflows_dir.mkdir(parents=True)
+        (workflows_dir / "test.yml").write_text("name: test")
+        git_commit("add workflow")
+
+        result = await get_scanners_to_test(
+            git_repo, base, "HEAD", fallback_scanners=[]
+        )
 
         assert result == []
 
@@ -317,3 +446,35 @@ class TestExtractScannerIds:
         result = extract_scanner_ids(files)
 
         assert result == ["a-org/scanner", "z-org/scanner"]
+
+
+class TestHasWorkflowChanges:
+    """Tests for has_workflow_changes."""
+
+    def test_returns_true_for_workflow_file(self) -> None:
+        """Returns True when workflow files are in changed files."""
+        files = [".github/workflows/test.yml"]
+
+        assert has_workflow_changes(files) is True
+
+    def test_returns_true_for_nested_workflow_file(self) -> None:
+        """Returns True for files nested under .github/workflows/."""
+        files = [".github/workflows/ci/build.yml"]
+
+        assert has_workflow_changes(files) is True
+
+    def test_returns_false_for_non_workflow_files(self) -> None:
+        """Returns False when no workflow files changed."""
+        files = ["README.md", "scanners/org/scanner/module.yaml"]
+
+        assert has_workflow_changes(files) is False
+
+    def test_returns_false_for_github_non_workflow(self) -> None:
+        """Returns False for .github files outside workflows."""
+        files = [".github/CODEOWNERS", ".github/dependabot.yml"]
+
+        assert has_workflow_changes(files) is False
+
+    def test_returns_false_for_empty_list(self) -> None:
+        """Returns False for empty file list."""
+        assert has_workflow_changes([]) is False

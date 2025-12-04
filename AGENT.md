@@ -63,7 +63,8 @@ Module tests run the full GitHub Action using `act` locally with WireMock mockin
 - **act for local GitHub Actions**: Use `act push --network {network} -j test` to run workflows locally in Docker
 - **WireMock testcontainers**: Use `WireMockContainer` from `wiremock.testing.testcontainer` for API mocking
 - **Docker networking**: Containers communicate via Docker network, not localhost - use `http://wiremock:8080` as API base URL
-- **Session-scoped fixtures**: WireMock and network fixtures are session-scoped for efficiency across tests
+- **Session-scoped WireMock**: WireMock and network fixtures are session-scoped for efficiency
+- **Function-scoped git repos**: Each test gets its own isolated `registry_path` to prevent test pollution
 - **Static dispatch_id for WireMock**: Use `dispatch_id_mode: "static"` in GitHub Actions provider config since WireMock cannot share state between POST dispatch and GET poll requests
 - **Future timestamps**: Use timestamps in the future (e.g., 2099) for mock workflow runs to pass validation
 - **Content-Type header required**: WireMock responses must include `Content-Type: application/json` for aiohttp to parse JSON
@@ -77,6 +78,13 @@ Module tests run the full GitHub Action using `act` locally with WireMock mockin
 - **Behavioral tests only**: Don't patch internal functions; drive tests through injected dependencies
 - **Don't test simple dataclasses**: No need to test that frozen dataclasses are immutable
 - **Standalone functions over classes**: When there's only one test suite, use plain test functions instead of a class
+
+### CLI and Action Interface
+
+- **This is a GitHub Action**: The CLI is not run manually; it's invoked via `action.yaml`
+- **Interface changes require action.yaml update**: Any new CLI argument must be added to `action.yaml` inputs and passed through
+- **Module tests verify the full flow**: New features that change the action interface must include a module test using act + WireMock
+- **GitHub Actions provider is easiest to mock**: Use it for module tests when testing action-level features
 
 ### Git Conventions
 

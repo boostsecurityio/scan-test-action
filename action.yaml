@@ -24,6 +24,10 @@ inputs:
     description: 'Base git reference to compare against'
     required: true
     default: 'origin/main'
+  fallback-scanners:
+    description: 'Comma-separated scanner IDs to test when workflow files change but no scanner files changed'
+    required: false
+    default: ''
 
 outputs:
   results:
@@ -72,7 +76,8 @@ runs:
           --registry-path "$REGISTRY_PATH" \
           --registry-repo "${{ inputs.registry-repo }}" \
           --registry-ref "$REGISTRY_REF" \
-          --base-ref "${{ inputs.base-ref }}")
+          --base-ref "${{ inputs.base-ref }}" \
+          --fallback-scanners "${{ inputs.fallback-scanners }}")
         {
           echo "results<<EOF"
           echo "$RESULTS"
