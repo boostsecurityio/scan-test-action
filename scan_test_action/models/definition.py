@@ -28,8 +28,8 @@ class Test(Model):
     )
     source: TestSource = Field(..., description="Source repository details")
     scan_paths: Sequence[str] = Field(
-        default_factory=lambda: ["."],
-        description="Paths to scan within the repository",
+        default_factory=list,
+        description="Paths to scan (empty means scan entire repo)",
     )
     timeout: str = Field(default="5m", description="Test timeout (e.g., '300s', '5m')")
 
@@ -45,7 +45,9 @@ class MatrixEntry(Model):
     )
     source_url: str = Field(..., description="Git repository URL")
     source_ref: str = Field(..., description="Git reference")
-    scan_path: str = Field(..., description="Single scan path")
+    scan_path: str | None = Field(
+        default=None, description="Single scan path (None means scan entire repo)"
+    )
     timeout: str = Field(default="5m", description="Test timeout")
 
 
@@ -58,10 +60,17 @@ class TestDefinition(Model):
     tests: Sequence[Test] = Field(default_factory=list, description="List of tests")
 
     def to_matrix_entries(self) -> Sequence[MatrixEntry]:
-        """Convert all tests into matrix entries (one per test/scan_path combo)."""
+        """Convert all tests into matrix entries (one per test/scan_path combo).
+
+        If scan_paths is empty, creates a single entry with scan_path=None,
+        indicating the entire repository should be scanned.
+        """
         entries: list[MatrixEntry] = []
         for test in self.tests:
-            for scan_path in test.scan_paths:
+            scan_paths: list[str | None] = (
+                list(test.scan_paths) if test.scan_paths else [None]
+            )
+            for scan_path in scan_paths:
                 entries.append(
                     MatrixEntry(
                         test_name=test.name,
