@@ -164,6 +164,55 @@ class TestDispatchScannerTests:
             "timeout": "5m",
         }
 
+    async def test_dispatches_with_empty_scan_paths_as_null(
+        self,
+        provider: GitHubActionsProvider,
+        aioresponses: aioresponses_cls,
+    ) -> None:
+        """Empty scan_paths serializes to scan_path: null in matrix."""
+        dispatch_url = (
+            f"{API_BASE_URL}/repos/test-owner/test-repo"
+            "/actions/workflows/test.yml/dispatches"
+        )
+        aioresponses.post(dispatch_url, status=204)
+
+        test_definition = TestDefinitionFactory.build(
+            tests=[
+                TestFactory.build(
+                    name="whole repo scan",
+                    type="source-code",
+                    source=TestSourceFactory.build(
+                        url="https://github.com/org/repo.git",
+                        ref="main",
+                    ),
+                    scan_paths=[],
+                    timeout="5m",
+                ),
+            ]
+        )
+
+        await provider.dispatch_scanner_tests(
+            scanner_id="org/scanner",
+            test_definition=test_definition,
+            registry_ref="abc123",
+            registry_repo="org/registry",
+        )
+
+        call = aioresponses.requests[("POST", URL(dispatch_url))][0]
+        payload = call.kwargs["json"]
+        import json
+
+        matrix = json.loads(payload["inputs"]["matrix"])
+        assert len(matrix) == 1
+        assert matrix[0] == {
+            "test_name": "whole repo scan",
+            "test_type": "source-code",
+            "source_url": "https://github.com/org/repo.git",
+            "source_ref": "main",
+            "scan_path": None,
+            "timeout": "5m",
+        }
+
     async def test_generates_unique_dispatch_ids(
         self,
         provider: GitHubActionsProvider,
