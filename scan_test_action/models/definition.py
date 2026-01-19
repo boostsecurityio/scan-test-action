@@ -32,6 +32,10 @@ class Test(Model):
         description="Paths to scan (empty means scan entire repo)",
     )
     timeout: str = Field(default="5m", description="Test timeout (e.g., '300s', '5m')")
+    env: dict[str, str] | None = Field(
+        default=None,
+        description="Environment variables to pass to scanner execution",
+    )
 
 
 class MatrixEntry(Model):
@@ -49,6 +53,10 @@ class MatrixEntry(Model):
         default=None, description="Single scan path (None means scan entire repo)"
     )
     timeout: str = Field(default="5m", description="Test timeout")
+    env: dict[str, str] | None = Field(
+        default=None,
+        description="Environment variables to pass to scanner execution",
+    )
 
 
 class TestDefinition(Model):
@@ -79,6 +87,7 @@ class TestDefinition(Model):
                         source_ref=test.source.ref,
                         scan_path=scan_path,
                         timeout=test.timeout,
+                        env=test.env,
                     )
                 )
         return entries
