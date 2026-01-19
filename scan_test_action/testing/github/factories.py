@@ -14,6 +14,7 @@ class TestFactory(ModelFactory[Test]):
     """Factory for Test."""
 
     scan_paths = Use(list[str])
+    env = None
 
 
 class TestDefinitionFactory(ModelFactory[TestDefinition]):

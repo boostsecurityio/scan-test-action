@@ -172,3 +172,103 @@ def test_scan_path_none_serializes_to_null() -> None:
     data = entry.model_dump(mode="json")
 
     assert data["scan_path"] is None
+
+
+def test_env_field_passthrough() -> None:
+    """Environment variables are passed through to matrix entries."""
+    definition = TestDefinition(
+        version="1.0",
+        tests=[
+            Test(
+                name="test with env",
+                type="source-code",
+                source=TestSource(url="https://github.com/org/repo.git", ref="main"),
+                scan_paths=["src"],
+                env={
+                    "BOOST_TF_TAGS_POLICY": '{"required_tags":["Environment"]}',
+                    "ANOTHER_VAR": "value",
+                },
+            )
+        ],
+    )
+
+    entries = definition.to_matrix_entries()
+
+    assert entries[0].env == {
+        "BOOST_TF_TAGS_POLICY": '{"required_tags":["Environment"]}',
+        "ANOTHER_VAR": "value",
+    }
+
+
+def test_env_field_default_none() -> None:
+    """Test without env field defaults to None (backward compatible)."""
+    definition = TestDefinition(
+        version="1.0",
+        tests=[
+            Test(
+                name="test without env",
+                type="source-code",
+                source=TestSource(url="https://github.com/org/repo.git", ref="main"),
+                scan_paths=["src"],
+            )
+        ],
+    )
+
+    entries = definition.to_matrix_entries()
+
+    assert entries[0].env is None
+
+
+def test_env_field_serializes_to_json() -> None:
+    """Environment variables serialize correctly for pipeline consumption."""
+    entry = MatrixEntry(
+        test_name="test",
+        test_type="source-code",
+        source_url="https://github.com/org/repo.git",
+        source_ref="main",
+        scan_path="src",
+        timeout="5m",
+        env={"KEY": "value", "JSON_VAL": '{"nested":"data"}'},
+    )
+
+    data = entry.model_dump(mode="json")
+
+    assert data["env"] == {"KEY": "value", "JSON_VAL": '{"nested":"data"}'}
+
+
+def test_env_none_serializes_to_null() -> None:
+    """env=None serializes to null in JSON for pipeline consumption."""
+    entry = MatrixEntry(
+        test_name="test",
+        test_type="source-code",
+        source_url="https://github.com/org/repo.git",
+        source_ref="main",
+        scan_path="src",
+        timeout="5m",
+        env=None,
+    )
+
+    data = entry.model_dump(mode="json")
+
+    assert data["env"] is None
+
+
+def test_env_shared_across_scan_paths() -> None:
+    """Same env vars apply to all matrix entries from a single test."""
+    definition = TestDefinition(
+        version="1.0",
+        tests=[
+            Test(
+                name="multi-path with env",
+                type="source-code",
+                source=TestSource(url="https://github.com/org/repo.git", ref="main"),
+                scan_paths=["path1", "path2", "path3"],
+                env={"SHARED_VAR": "shared_value"},
+            )
+        ],
+    )
+
+    entries = definition.to_matrix_entries()
+
+    assert len(entries) == 3
+    assert all(e.env == {"SHARED_VAR": "shared_value"} for e in entries)
