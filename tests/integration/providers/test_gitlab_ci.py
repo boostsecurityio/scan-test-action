@@ -143,6 +143,7 @@ class TestDispatchScannerTests:
             "source_ref": "main",
             "scan_path": "src",
             "timeout": "5m",
+            "env": {},
         }
         assert matrix[1] == {
             "test_name": "source scan",
@@ -151,6 +152,7 @@ class TestDispatchScannerTests:
             "source_ref": "main",
             "scan_path": "lib",
             "timeout": "5m",
+            "env": {},
         }
         assert matrix[2] == {
             "test_name": "container scan",
@@ -159,6 +161,7 @@ class TestDispatchScannerTests:
             "source_ref": "v1.0.0",
             "scan_path": ".",
             "timeout": "5m",
+            "env": {},
         }
 
     async def test_raises_on_dispatch_failure(
