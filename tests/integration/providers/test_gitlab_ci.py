@@ -212,6 +212,50 @@ class TestDispatchScannerTests:
                 registry_repo="org/registry",
             )
 
+    async def test_dispatches_with_env_vars_in_matrix(
+        self,
+        provider: GitLabCIProvider,
+        aioresponses: aioresponses_cls,
+    ) -> None:
+        """Dispatches pipeline with env vars included in matrix."""
+        dispatch_url = f"{API_BASE_URL}projects/12345/trigger/pipeline"
+        aioresponses.post(
+            dispatch_url,
+            status=201,
+            payload=create_pipeline_response(pipeline_id=789),
+        )
+
+        test_definition = TestDefinitionFactory.build(
+            allowed_env_prefixes=["CODEQL_"],
+            tests=[
+                TestFactory.build(
+                    name="codeql test",
+                    type="source-code",
+                    source=TestSourceFactory.build(
+                        url="https://github.com/org/repo.git",
+                        ref="main",
+                    ),
+                    scan_paths=["src"],
+                    env={"CODEQL_LANGUAGE": "javascript"},
+                ),
+            ],
+        )
+
+        await provider.dispatch_scanner_tests(
+            scanner_id="org/codeql",
+            test_definition=test_definition,
+            registry_ref="abc123",
+            registry_repo="org/registry",
+        )
+
+        call = aioresponses.requests[("POST", URL(dispatch_url))][0]
+        payload = call.kwargs["json"]
+        import json
+
+        matrix = json.loads(payload["variables"]["MATRIX_TESTS"])
+        assert len(matrix) == 1
+        assert matrix[0]["env"] == {"CODEQL_LANGUAGE": "javascript"}
+
 
 class TestPollStatus:
     """Tests for poll_status."""
