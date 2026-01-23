@@ -1,5 +1,7 @@
 """Load and parse test definitions from YAML files."""
 
+import logging
+from collections.abc import Sequence
 from pathlib import Path
 
 import yaml
@@ -10,12 +12,14 @@ from scan_test_action.models.definition import TestDefinition
 async def load_test_definition(
     registry_path: Path,
     scanner_id: str,
+    allowed_env_prefixes: Sequence[str] = (),
 ) -> TestDefinition:
     """Load test definition for a scanner.
 
     Args:
         registry_path: Path to the scanner registry repository
         scanner_id: Scanner identifier (e.g., "boostsecurityio/trivy-fs")
+        allowed_env_prefixes: CLI-provided allowed env prefixes (overrides YAML)
 
     Returns:
         Parsed test definition
@@ -25,6 +29,7 @@ async def load_test_definition(
         ValueError: If YAML is invalid or doesn't match schema
 
     """
+    log = logging.getLogger("scan_test_action")
     test_file = registry_path / "scanners" / scanner_id / "tests.yaml"
 
     if not test_file.exists():
@@ -39,7 +44,54 @@ async def load_test_definition(
     if data is None:
         raise ValueError(f"Empty test file: {test_file}")
 
+    # Warn and remove if YAML contains allowed_env_prefixes (it's ignored)
+    if "allowed_env_prefixes" in data:
+        log.warning(
+            "%s contains allowed_env_prefixes which is ignored; "
+            "use --allowed-env-prefixes CLI argument instead",
+            test_file,
+        )
+        del data["allowed_env_prefixes"]
+
     try:
-        return TestDefinition.model_validate(data)
+        definition = TestDefinition.model_validate(data)
     except Exception as e:
         raise ValueError(f"Invalid test definition schema in {test_file}: {e}") from e
+
+    # Validate env vars against CLI-provided prefixes
+    validate_env_prefixes(definition, allowed_env_prefixes, test_file)
+
+    return definition
+
+
+def validate_env_prefixes(
+    definition: TestDefinition,
+    allowed_env_prefixes: Sequence[str],
+    test_file: Path,
+) -> None:
+    """Validate that all env vars in tests match allowed prefixes.
+
+    Args:
+        definition: The parsed test definition
+        allowed_env_prefixes: CLI-provided allowed env prefixes
+        test_file: Path to the test file (for error messages)
+
+    Raises:
+        ValueError: If env vars don't match allowed prefixes
+
+    """
+    for test in definition.tests:
+        if not test.env:
+            continue
+
+        if not allowed_env_prefixes:
+            raise ValueError(
+                f"{test_file}: env vars specified but no allowed_env_prefixes defined"
+            )
+
+        for key in test.env.keys():
+            if not any(key.startswith(prefix) for prefix in allowed_env_prefixes):
+                raise ValueError(
+                    f"{test_file}: Environment variable '{key}' does not match any "
+                    f"allowed prefix: {list(allowed_env_prefixes)}"
+                )

@@ -1,7 +1,5 @@
 """Tests for TestDefinition.to_matrix_entries method."""
 
-import pytest
-
 from scan_test_action.models.definition import (
     MatrixEntry,
     Test,
@@ -180,7 +178,6 @@ def test_env_propagated_to_matrix_entries() -> None:
     """Env vars are correctly propagated from Test to MatrixEntry."""
     definition = TestDefinition(
         version="1.0",
-        allowed_env_prefixes=["CODEQL_"],
         tests=[
             Test(
                 name="codeql test",
@@ -194,64 +191,6 @@ def test_env_propagated_to_matrix_entries() -> None:
     entries = definition.to_matrix_entries()
 
     assert entries[0].env == {"CODEQL_LANGUAGE": "javascript"}
-
-
-def test_env_validation_passes_with_matching_prefix() -> None:
-    """Validation passes when env vars match allowed prefixes."""
-    definition = TestDefinition(
-        version="1.0",
-        allowed_env_prefixes=["CODEQL_", "SCANNER_"],
-        tests=[
-            Test(
-                name="test",
-                type="source-code",
-                source=TestSource(url="https://github.com/org/repo.git", ref="main"),
-                env={"CODEQL_LANGUAGE": "python", "SCANNER_DEBUG": "true"},
-            )
-        ],
-    )
-
-    assert definition.tests[0].env == {
-        "CODEQL_LANGUAGE": "python",
-        "SCANNER_DEBUG": "true",
-    }
-
-
-def test_env_validation_fails_with_non_matching_prefix() -> None:
-    """Validation fails when env vars don't match any allowed prefix."""
-    with pytest.raises(ValueError, match=r"INVALID_VAR.*does not match any allowed"):
-        TestDefinition(
-            version="1.0",
-            allowed_env_prefixes=["CODEQL_"],
-            tests=[
-                Test(
-                    name="test",
-                    type="source-code",
-                    source=TestSource(
-                        url="https://github.com/org/repo.git", ref="main"
-                    ),
-                    env={"INVALID_VAR": "value"},
-                )
-            ],
-        )
-
-
-def test_env_validation_fails_when_no_allowed_prefixes_defined() -> None:
-    """Validation fails when env vars used but no allowed_env_prefixes defined."""
-    with pytest.raises(ValueError, match="no allowed_env_prefixes defined"):
-        TestDefinition(
-            version="1.0",
-            tests=[
-                Test(
-                    name="test",
-                    type="source-code",
-                    source=TestSource(
-                        url="https://github.com/org/repo.git", ref="main"
-                    ),
-                    env={"SOME_VAR": "value"},
-                )
-            ],
-        )
 
 
 def test_env_defaults_to_empty_dict() -> None:
@@ -288,10 +227,9 @@ def test_env_serialization_to_json() -> None:
 
 
 def test_multiple_tests_with_different_envs() -> None:
-    """Multiple tests can have different env vars, validated against same prefixes."""
+    """Multiple tests can have different env vars."""
     definition = TestDefinition(
         version="1.0",
-        allowed_env_prefixes=["CODEQL_"],
         tests=[
             Test(
                 name="js-test",

@@ -322,7 +322,6 @@ class TestDispatchScannerTests:
         aioresponses.post(dispatch_url, status=204)
 
         test_definition = TestDefinitionFactory.build(
-            allowed_env_prefixes=["CODEQL_"],
             tests=[
                 TestFactory.build(
                     name="codeql test",

@@ -22,5 +22,4 @@ class TestFactory(ModelFactory[Test]):
 class TestDefinitionFactory(ModelFactory[TestDefinition]):
     """Factory for TestDefinition."""
 
-    allowed_env_prefixes: Any = Use(lambda: [])
     tests: Any = Use(list[Test])

@@ -28,6 +28,10 @@ inputs:
     description: 'Comma-separated scanner IDs to test when workflow files change but no scanner files changed'
     required: false
     default: ''
+  allowed-env-prefixes:
+    description: 'Comma-separated list of allowed environment variable prefixes for tests'
+    required: false
+    default: ''
 
 outputs:
   results:
@@ -77,7 +81,8 @@ runs:
           --registry-repo "${{ inputs.registry-repo }}" \
           --registry-ref "$REGISTRY_REF" \
           --base-ref "${{ inputs.base-ref }}" \
-          --fallback-scanners "${{ inputs.fallback-scanners }}")
+          --fallback-scanners "${{ inputs.fallback-scanners }}" \
+          --allowed-env-prefixes "${{ inputs.allowed-env-prefixes }}")
         {
           echo "results<<EOF"
           echo "$RESULTS"

@@ -54,6 +54,13 @@ def parse_fallback_scanners(fallback_scanners: str) -> Sequence[str]:
     return tuple(s.strip() for s in fallback_scanners.split(",") if s.strip())
 
 
+def parse_allowed_env_prefixes(allowed_env_prefixes: str) -> Sequence[str]:
+    """Parse comma-separated allowed environment variable prefixes."""
+    if not allowed_env_prefixes.strip():
+        return ()
+    return tuple(s.strip() for s in allowed_env_prefixes.split(",") if s.strip())
+
+
 async def run(
     provider_key: str,
     provider_config_json: str,
@@ -62,6 +69,7 @@ async def run(
     registry_ref: str,
     base_ref: str,
     fallback_scanners: Sequence[str] = (),
+    allowed_env_prefixes: Sequence[str] = (),
 ) -> int:
     """Run scanner tests and return exit code."""
     log = logging.getLogger("scan_test_action")
@@ -85,7 +93,9 @@ async def run(
     log.info("Changed scanners: %s", ", ".join(changed_scanners))
 
     log.info("Loading test definitions...")
-    test_definitions = await load_test_definitions(registry_path, changed_scanners)
+    test_definitions = await load_test_definitions(
+        registry_path, changed_scanners, allowed_env_prefixes
+    )
 
     if not test_definitions:
         log.info("No test definitions found for changed scanners")
@@ -115,14 +125,16 @@ async def run(
 
 
 async def load_test_definitions(
-    registry_path: Path, scanner_ids: Sequence[str]
+    registry_path: Path,
+    scanner_ids: Sequence[str],
+    allowed_env_prefixes: Sequence[str] = (),
 ) -> Mapping[str, TestDefinition]:
     """Load test definitions for the given scanners."""
     definitions: dict[str, TestDefinition] = {}
     for scanner_id in scanner_ids:
         try:
             definitions[scanner_id] = await load_test_definition(
-                registry_path, scanner_id
+                registry_path, scanner_id, allowed_env_prefixes
             )
         except FileNotFoundError:
             pass
@@ -193,6 +205,11 @@ def main() -> None:
         default="",
         help="Comma-separated scanner IDs to test when workflow files change",
     )
+    parser.add_argument(
+        "--allowed-env-prefixes",
+        default="",
+        help="Comma-separated allowed environment variable prefixes for tests",
+    )
 
     args = parser.parse_args()
 
@@ -211,6 +228,7 @@ def main() -> None:
             registry_ref=args.registry_ref,
             base_ref=args.base_ref,
             fallback_scanners=parse_fallback_scanners(args.fallback_scanners),
+            allowed_env_prefixes=parse_allowed_env_prefixes(args.allowed_env_prefixes),
         )
     )
     sys.exit(exit_code)

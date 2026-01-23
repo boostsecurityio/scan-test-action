@@ -121,3 +121,108 @@ tests:
 
         with pytest.raises(ValueError, match="Invalid test definition schema"):
             await load_test_definition(tmp_path, "org/scanner")
+
+    async def test_uses_cli_provided_allowed_env_prefixes(self, tmp_path: Path) -> None:
+        """Uses CLI-provided allowed_env_prefixes for validation."""
+        scanner_dir = tmp_path / "scanners" / "org" / "scanner"
+        scanner_dir.mkdir(parents=True)
+        (scanner_dir / "tests.yaml").write_text(
+            """
+version: "1.0"
+tests:
+  - name: "test"
+    type: "source-code"
+    source:
+      url: "https://github.com/org/repo.git"
+      ref: "main"
+    env:
+      CODEQL_LANGUAGE: "javascript"
+"""
+        )
+
+        definition = await load_test_definition(
+            tmp_path, "org/scanner", allowed_env_prefixes=("CODEQL_",)
+        )
+
+        # Validation passes - env var matches allowed prefix
+        assert definition.tests[0].env == {"CODEQL_LANGUAGE": "javascript"}
+
+    async def test_warns_when_yaml_contains_allowed_env_prefixes(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Logs warning when YAML contains allowed_env_prefixes (it's ignored)."""
+        scanner_dir = tmp_path / "scanners" / "org" / "scanner"
+        scanner_dir.mkdir(parents=True)
+        (scanner_dir / "tests.yaml").write_text(
+            """
+version: "1.0"
+allowed_env_prefixes:
+  - "YAML_PREFIX_"
+tests:
+  - name: "test"
+    type: "source-code"
+    source:
+      url: "https://github.com/org/repo.git"
+      ref: "main"
+"""
+        )
+
+        import logging
+
+        with caplog.at_level(logging.WARNING):
+            await load_test_definition(
+                tmp_path, "org/scanner", allowed_env_prefixes=("CLI_PREFIX_",)
+            )
+
+        # Warning was logged about YAML containing allowed_env_prefixes
+        assert "contains allowed_env_prefixes which is ignored" in caplog.text
+
+    async def test_validation_fails_when_env_var_not_in_cli_prefixes(
+        self, tmp_path: Path
+    ) -> None:
+        """Validation fails when env vars don't match CLI-provided prefixes."""
+        scanner_dir = tmp_path / "scanners" / "org" / "scanner"
+        scanner_dir.mkdir(parents=True)
+        (scanner_dir / "tests.yaml").write_text(
+            """
+version: "1.0"
+tests:
+  - name: "test"
+    type: "source-code"
+    source:
+      url: "https://github.com/org/repo.git"
+      ref: "main"
+    env:
+      INVALID_VAR: "value"
+"""
+        )
+
+        with pytest.raises(
+            ValueError, match=r"INVALID_VAR.*does not match any allowed"
+        ):
+            await load_test_definition(
+                tmp_path, "org/scanner", allowed_env_prefixes=("CODEQL_",)
+            )
+
+    async def test_validation_fails_when_no_cli_prefixes_but_env_vars_used(
+        self, tmp_path: Path
+    ) -> None:
+        """Validation fails when env vars used but no CLI prefixes provided."""
+        scanner_dir = tmp_path / "scanners" / "org" / "scanner"
+        scanner_dir.mkdir(parents=True)
+        (scanner_dir / "tests.yaml").write_text(
+            """
+version: "1.0"
+tests:
+  - name: "test"
+    type: "source-code"
+    source:
+      url: "https://github.com/org/repo.git"
+      ref: "main"
+    env:
+      SOME_VAR: "value"
+"""
+        )
+
+        with pytest.raises(ValueError, match="no allowed_env_prefixes defined"):
+            await load_test_definition(tmp_path, "org/scanner")

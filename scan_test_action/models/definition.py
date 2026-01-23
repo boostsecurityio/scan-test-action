@@ -1,9 +1,9 @@
 """Models for test definitions loaded from tests.yaml files."""
 
 from collections.abc import Mapping, Sequence
-from typing import Literal, Self
+from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field
 
 from scan_test_action.models.base import Model
 
@@ -65,33 +65,7 @@ class TestDefinition(Model):
     __test__ = False
 
     version: str = Field(..., description="Test definition schema version")
-    allowed_env_prefixes: Sequence[str] = Field(
-        default_factory=list,
-        description="List of allowed environment variable name prefixes",
-    )
     tests: Sequence[Test] = Field(default_factory=list, description="List of tests")
-
-    @model_validator(mode="after")
-    def validate_env_prefixes(self) -> Self:  # noqa: N804
-        """Validate that all env vars in tests match allowed prefixes."""
-        if not self.allowed_env_prefixes:
-            for test in self.tests:
-                if test.env:
-                    raise ValueError(
-                        "env vars specified but no allowed_env_prefixes defined"
-                    )
-            return self
-
-        for test in self.tests:
-            for key in test.env.keys():
-                if not any(
-                    key.startswith(prefix) for prefix in self.allowed_env_prefixes
-                ):
-                    raise ValueError(
-                        f"Environment variable '{key}' does not match any allowed "
-                        f"prefix: {list(self.allowed_env_prefixes)}"
-                    )
-        return self
 
     def to_matrix_entries(self) -> Sequence[MatrixEntry]:
         """Convert all tests into matrix entries (one per test/scan_path combo).
