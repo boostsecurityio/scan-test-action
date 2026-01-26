@@ -1,6 +1,5 @@
 """Load and parse test definitions from YAML files."""
 
-import logging
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -29,7 +28,6 @@ async def load_test_definition(
         ValueError: If YAML is invalid or doesn't match schema
 
     """
-    log = logging.getLogger("scan_test_action")
     test_file = registry_path / "scanners" / scanner_id / "tests.yaml"
 
     if not test_file.exists():
@@ -43,15 +41,6 @@ async def load_test_definition(
 
     if data is None:
         raise ValueError(f"Empty test file: {test_file}")
-
-    # Warn and remove if YAML contains allowed_env_prefixes (it's ignored)
-    if "allowed_env_prefixes" in data:
-        log.warning(
-            "%s contains allowed_env_prefixes which is ignored; "
-            "use --allowed-env-prefixes CLI argument instead",
-            test_file,
-        )
-        del data["allowed_env_prefixes"]
 
     try:
         definition = TestDefinition.model_validate(data)
