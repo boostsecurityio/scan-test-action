@@ -10,6 +10,7 @@ from scan_test_action.cli import (
     format_output,
     load_test_definitions,
     log_results_summary,
+    parse_allowed_env_prefixes,
     parse_fallback_scanners,
     run,
 )
@@ -249,6 +250,42 @@ class TestParseFallbackScanners:
         assert parse_fallback_scanners("   ") == ()
 
 
+class TestParseAllowedEnvPrefixes:
+    """Tests for parse_allowed_env_prefixes."""
+
+    def test_parses_single_prefix(self) -> None:
+        """Parses a single prefix."""
+        result = parse_allowed_env_prefixes("CODEQL_")
+
+        assert result == ("CODEQL_",)
+
+    def test_parses_multiple_prefixes(self) -> None:
+        """Parses comma-separated prefixes."""
+        result = parse_allowed_env_prefixes("CODEQL_,SCANNER_")
+
+        assert result == ("CODEQL_", "SCANNER_")
+
+    def test_trims_whitespace(self) -> None:
+        """Trims whitespace from prefixes."""
+        result = parse_allowed_env_prefixes("  CODEQL_ , SCANNER_  ")
+
+        assert result == ("CODEQL_", "SCANNER_")
+
+    def test_ignores_empty_entries(self) -> None:
+        """Ignores empty entries from consecutive commas."""
+        result = parse_allowed_env_prefixes("CODEQL_,,SCANNER_,")
+
+        assert result == ("CODEQL_", "SCANNER_")
+
+    def test_returns_empty_for_empty_string(self) -> None:
+        """Returns empty tuple for empty string."""
+        assert parse_allowed_env_prefixes("") == ()
+
+    def test_returns_empty_for_whitespace_only(self) -> None:
+        """Returns empty tuple for whitespace-only string."""
+        assert parse_allowed_env_prefixes("   ") == ()
+
+
 class TestLoadTestDefinitions:
     """Tests for load_test_definitions function."""
 
@@ -265,7 +302,7 @@ class TestLoadTestDefinitions:
 
         assert "org/scanner" in result
         assert result["org/scanner"] == test_def
-        mock_load.assert_called_once_with(Path("/registry"), "org/scanner")
+        mock_load.assert_called_once_with(Path("/registry"), "org/scanner", ())
 
     async def test_skips_missing_definitions(self) -> None:
         """Skips scanners without test definitions."""
@@ -277,6 +314,26 @@ class TestLoadTestDefinitions:
             result = await load_test_definitions(Path("/registry"), ["org/scanner"])
 
         assert result == {}
+
+    async def test_passes_allowed_env_prefixes_to_loader(self) -> None:
+        """Passes allowed_env_prefixes to load_test_definition."""
+        test_def = TestDefinitionFactory.build()
+
+        with patch(
+            "scan_test_action.cli.load_test_definition",
+            new_callable=AsyncMock,
+            return_value=test_def,
+        ) as mock_load:
+            result = await load_test_definitions(
+                Path("/registry"),
+                ["org/scanner"],
+                allowed_env_prefixes=("CODEQL_", "SCANNER_"),
+            )
+
+        assert "org/scanner" in result
+        mock_load.assert_called_once_with(
+            Path("/registry"), "org/scanner", ("CODEQL_", "SCANNER_")
+        )
 
 
 class TestRun:
@@ -621,3 +678,35 @@ class TestMain:
             main()
 
         assert exc_info.value.code == 1
+
+    def test_parses_allowed_env_prefixes(self) -> None:
+        """Main function parses --allowed-env-prefixes and passes to run()."""
+        from scan_test_action.cli import main
+
+        with (
+            patch(
+                "sys.argv",
+                [
+                    "cli",
+                    "--provider",
+                    "github-actions",
+                    "--provider-config",
+                    '{"token": "test"}',
+                    "--registry-path",
+                    "/registry",
+                    "--registry-repo",
+                    "org/registry",
+                    "--registry-ref",
+                    "abc123",
+                    "--base-ref",
+                    "main",
+                    "--allowed-env-prefixes",
+                    "CODEQL_,SCANNER_",
+                ],
+            ),
+            patch("scan_test_action.cli.asyncio.run", return_value=0) as mock_run,
+            pytest.raises(SystemExit),
+        ):
+            main()
+
+        mock_run.assert_called_once()

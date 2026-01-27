@@ -70,10 +70,12 @@ class AzureDevOpsProvider(PipelineProvider[str]):
         registry_repo: str,
     ) -> str:
         """Dispatch pipeline run and return run ID for polling."""
-        matrix_entries = [
-            entry.model_dump(mode="json")
-            for entry in test_definition.to_matrix_entries()
-        ]
+        # Azure DevOps matrix requires flat string values, so stringify env field
+        matrix_entries = []
+        for entry in test_definition.to_matrix_entries():
+            entry_dict = entry.model_dump(mode="json")
+            entry_dict["env"] = json.dumps(entry_dict["env"])
+            matrix_entries.append(entry_dict)
 
         template_params = {
             "SCANNER_ID": scanner_id,

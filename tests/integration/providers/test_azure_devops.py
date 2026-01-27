@@ -143,6 +143,7 @@ class TestDispatchScannerTests:
 
         matrix = json.loads(payload["templateParameters"]["MATRIX_TESTS"])
         assert len(matrix) == 3
+        # Azure DevOps requires env to be a JSON string (not nested object)
         assert matrix[0] == {
             "test_name": "source scan",
             "test_type": "source-code",
@@ -150,6 +151,7 @@ class TestDispatchScannerTests:
             "source_ref": "main",
             "scan_path": "src",
             "timeout": "5m",
+            "env": "{}",
         }
         assert matrix[1] == {
             "test_name": "source scan",
@@ -158,6 +160,7 @@ class TestDispatchScannerTests:
             "source_ref": "main",
             "scan_path": "lib",
             "timeout": "5m",
+            "env": "{}",
         }
         assert matrix[2] == {
             "test_name": "container scan",
@@ -166,7 +169,55 @@ class TestDispatchScannerTests:
             "source_ref": "v1.0.0",
             "scan_path": ".",
             "timeout": "5m",
+            "env": "{}",
         }
+
+    async def test_dispatches_with_env_vars_in_matrix(
+        self,
+        provider: AzureDevOpsProvider,
+        aioresponses: aioresponses_cls,
+    ) -> None:
+        """Dispatches pipeline with env vars included in matrix."""
+        dispatch_url = (
+            f"{API_BASE_URL}/test-org/test-project"
+            "/_apis/pipelines/42/runs?api-version=7.1"
+        )
+        aioresponses.post(
+            dispatch_url,
+            status=200,
+            payload=create_run_response(run_id=999),
+        )
+
+        test_definition = TestDefinitionFactory.build(
+            tests=[
+                TestFactory.build(
+                    name="codeql test",
+                    type="source-code",
+                    source=TestSourceFactory.build(
+                        url="https://github.com/org/repo.git",
+                        ref="main",
+                    ),
+                    scan_paths=["src"],
+                    env={"CODEQL_LANGUAGE": "javascript"},
+                ),
+            ],
+        )
+
+        await provider.dispatch_scanner_tests(
+            scanner_id="org/codeql",
+            test_definition=test_definition,
+            registry_ref="abc123",
+            registry_repo="org/registry",
+        )
+
+        call = aioresponses.requests[("POST", URL(dispatch_url))][0]
+        payload = call.kwargs["json"]
+        import json
+
+        matrix = json.loads(payload["templateParameters"]["MATRIX_TESTS"])
+        assert len(matrix) == 1
+        # Azure DevOps requires env to be a JSON string (not nested object)
+        assert matrix[0]["env"] == '{"CODEQL_LANGUAGE": "javascript"}'
 
     async def test_raises_on_dispatch_failure(
         self,

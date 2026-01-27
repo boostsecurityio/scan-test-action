@@ -172,3 +172,81 @@ def test_scan_path_none_serializes_to_null() -> None:
     data = entry.model_dump(mode="json")
 
     assert data["scan_path"] is None
+
+
+def test_env_propagated_to_matrix_entries() -> None:
+    """Env vars are correctly propagated from Test to MatrixEntry."""
+    definition = TestDefinition(
+        version="1.0",
+        tests=[
+            Test(
+                name="codeql test",
+                type="source-code",
+                source=TestSource(url="https://github.com/org/repo.git", ref="main"),
+                env={"CODEQL_LANGUAGE": "javascript"},
+            )
+        ],
+    )
+
+    entries = definition.to_matrix_entries()
+
+    assert entries[0].env == {"CODEQL_LANGUAGE": "javascript"}
+
+
+def test_env_defaults_to_empty_dict() -> None:
+    """Test without explicit env produces empty dict."""
+    definition = TestDefinition(
+        version="1.0",
+        tests=[
+            Test(
+                name="test",
+                type="source-code",
+                source=TestSource(url="https://github.com/org/repo.git", ref="main"),
+            )
+        ],
+    )
+
+    entries = definition.to_matrix_entries()
+
+    assert entries[0].env == {}
+
+
+def test_env_serialization_to_json() -> None:
+    """Env serializes correctly to JSON for pipeline consumption."""
+    entry = MatrixEntry(
+        test_name="test",
+        test_type="source-code",
+        source_url="https://github.com/org/repo.git",
+        source_ref="main",
+        env={"CODEQL_LANGUAGE": "javascript", "CODEQL_DEBUG": "true"},
+    )
+
+    data = entry.model_dump(mode="json")
+
+    assert data["env"] == {"CODEQL_LANGUAGE": "javascript", "CODEQL_DEBUG": "true"}
+
+
+def test_multiple_tests_with_different_envs() -> None:
+    """Multiple tests can have different env vars."""
+    definition = TestDefinition(
+        version="1.0",
+        tests=[
+            Test(
+                name="js-test",
+                type="source-code",
+                source=TestSource(url="https://github.com/org/js-repo.git", ref="main"),
+                env={"CODEQL_LANGUAGE": "javascript"},
+            ),
+            Test(
+                name="py-test",
+                type="source-code",
+                source=TestSource(url="https://github.com/org/py-repo.git", ref="main"),
+                env={"CODEQL_LANGUAGE": "python"},
+            ),
+        ],
+    )
+
+    entries = definition.to_matrix_entries()
+
+    assert entries[0].env == {"CODEQL_LANGUAGE": "javascript"}
+    assert entries[1].env == {"CODEQL_LANGUAGE": "python"}

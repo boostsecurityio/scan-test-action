@@ -1,6 +1,6 @@
 """Models for test definitions loaded from tests.yaml files."""
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Literal
 
 from pydantic import Field
@@ -32,6 +32,10 @@ class Test(Model):
         description="Paths to scan (empty means scan entire repo)",
     )
     timeout: str = Field(default="5m", description="Test timeout (e.g., '300s', '5m')")
+    env: Mapping[str, str] = Field(
+        default_factory=dict,
+        description="Environment variables to pass to the test runner",
+    )
 
 
 class MatrixEntry(Model):
@@ -49,6 +53,10 @@ class MatrixEntry(Model):
         default=None, description="Single scan path (None means scan entire repo)"
     )
     timeout: str = Field(default="5m", description="Test timeout")
+    env: Mapping[str, str] = Field(
+        default_factory=dict,
+        description="Environment variables for this test",
+    )
 
 
 class TestDefinition(Model):
@@ -79,6 +87,7 @@ class TestDefinition(Model):
                         source_ref=test.source.ref,
                         scan_path=scan_path,
                         timeout=test.timeout,
+                        env=test.env,
                     )
                 )
         return entries
