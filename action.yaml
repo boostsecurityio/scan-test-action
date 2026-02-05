@@ -18,7 +18,10 @@ inputs:
     required: true
     default: '.'
   registry-repo:
-    description: 'Registry repository identifier (org/repo format)'
+    description: 'Registry repository identifier (org/repo format). For fork PRs, use the fork repo.'
+    required: true
+  registry-ref:
+    description: 'Git ref of the registry (commit SHA). For fork PRs, use the fork SHA.'
     required: true
   base-ref:
     description: 'Base git reference to compare against'
@@ -66,20 +69,13 @@ runs:
       run: |
         REGISTRY_PATH=$(realpath "${{ inputs.registry-path }}")
 
-        # Use head.sha for pull_request events, GITHUB_SHA otherwise
-        if [ "${{ github.event_name }}" == "pull_request" ]; then
-          REGISTRY_REF="${{ github.event.pull_request.head.sha }}"
-        else
-          REGISTRY_REF="${GITHUB_SHA}"
-        fi
-
         cd ${{ github.action_path }}
         RESULTS=$(poetry run python -m scan_test_action.cli \
           --provider "${{ inputs.provider }}" \
           --provider-config "$PROVIDER_CONFIG" \
           --registry-path "$REGISTRY_PATH" \
           --registry-repo "${{ inputs.registry-repo }}" \
-          --registry-ref "$REGISTRY_REF" \
+          --registry-ref "${{ inputs.registry-ref }}" \
           --base-ref "${{ inputs.base-ref }}" \
           --fallback-scanners "${{ inputs.fallback-scanners }}" \
           --allowed-env-prefixes "${{ inputs.allowed-env-prefixes }}")

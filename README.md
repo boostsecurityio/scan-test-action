@@ -22,8 +22,9 @@ This action detects which scanners have been modified in a pull request and runs
         "workflow_id": "scanner-test.yml"
       }
     registry-path: "."
-    registry-repo: "boostsecurityio/scanner-registry"
-    base-ref: "origin/main"
+    registry-repo: ${{ github.event.pull_request.head.repo.full_name }}
+    registry-ref: ${{ github.event.pull_request.head.sha }}
+    base-ref: origin/${{ github.base_ref }}
 ```
 
 ### Action Inputs
@@ -33,7 +34,8 @@ This action detects which scanners have been modified in a pull request and runs
 | `provider` | Yes | CI/CD provider key (e.g., `github-actions`, `gitlab-ci`, `azure-devops`, `bitbucket`) |
 | `provider-config` | Yes | JSON configuration for the provider (see provider sections below) |
 | `registry-path` | No | Path to registry root (default: `.`) |
-| `registry-repo` | No | Registry repository in org/repo format (default: extracted from git remote) |
+| `registry-repo` | Yes | Registry repository in org/repo format. For fork PRs, use the fork repo. |
+| `registry-ref` | Yes | Git ref of the registry (commit SHA). For fork PRs, use the fork SHA. |
 | `base-ref` | No | Base git reference for diff (default: `origin/main`) |
 
 ### Action Outputs
@@ -52,6 +54,7 @@ poetry run python -m scan_test_action.cli \
   --provider-config '{"token": "...", "owner": "...", "repo": "...", "workflow_id": "..."}' \
   --registry-path . \
   --registry-repo org/scanner-registry \
+  --registry-ref abc123def456 \
   --base-ref origin/main
 ```
 
