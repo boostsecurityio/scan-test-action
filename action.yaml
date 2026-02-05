@@ -24,7 +24,7 @@ inputs:
     description: 'Git ref of the registry (commit SHA). For fork PRs, use the fork SHA.'
     required: true
   base-ref:
-    description: 'Base git reference to compare against'
+    description: 'Base git reference to compare against. For fork PRs, use the base SHA.'
     required: true
     default: 'origin/main'
   fallback-scanners:

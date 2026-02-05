@@ -24,7 +24,7 @@ This action detects which scanners have been modified in a pull request and runs
     registry-path: "."
     registry-repo: ${{ github.event.pull_request.head.repo.full_name }}
     registry-ref: ${{ github.event.pull_request.head.sha }}
-    base-ref: origin/${{ github.base_ref }}
+    base-ref: ${{ github.event.pull_request.base.sha }}
 ```
 
 ### Action Inputs
